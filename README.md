@@ -33,6 +33,8 @@ python tools/build_index.py
 python app.py          # http://127.0.0.1:8100/
 ```
 
+**桌面版（双击即用，无需安装 Python）**：[Releases v1.0](https://github.com/hosaile/ai-application-projects/releases/tag/v1.0) 下载 318MB zip → 解压 → 双击 `RAG知识库系统.exe`。内置向量模型与预建索引；不填 API Key 为检索模式，填 Key 为大模型模式。
+
 更多说明见 [rag-knowledge-base/README.md](rag-knowledge-base/README.md)，体检报告见 [审计/体检报告](rag-knowledge-base/审计/体检报告_20261102.md)。
 
 ---
