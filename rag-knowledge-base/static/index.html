@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG 知识库问答系统</title>
+<style>
+:root{--paper:#f2f1ec;--card:#fffef9;--ink:#1b1e23;--muted:#6b6f76;--line:#d9d6cc;
+  --safety:#f0b429;--danger:#a5342b;--ok:#2c6b4c;--blue:#2f4f6f}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px}
+.top{background:#1b1e23;color:#fff;padding:18px 0}
+.top .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:9px;height:9px;background:var(--safety);border-radius:2px}
+.sub{color:#b9bcc2;font-size:13px}
+.state{font-size:12px;color:#b9bcc2}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;
+  margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h2{font-size:15px;margin:0 0 12px;padding-bottom:9px;border-bottom:2px solid var(--ink)}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 5px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:9px 11px;
+  font:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--safety);
+  box-shadow:0 0 0 3px rgba(240,180,41,.15)}
+button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:10px 18px;
+  font:inherit;font-weight:600;cursor:pointer}
+button:hover{background:#000}
+button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f5f3ee}
+button.danger{color:var(--danger);border-color:#e0b8b2}
+/* 聊天区 */
+.chat{display:flex;flex-direction:column;gap:12px;min-height:220px;max-height:56vh;overflow-y:auto;
+  padding:6px 2px 10px}
+.msg{max-width:88%;padding:11px 14px;border-radius:10px;font-size:14px;white-space:pre-wrap;
+  word-break:break-word;line-height:1.6}
+.msg.user{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:3px}
+.msg.bot{align-self:flex-start;background:#f7f5ef;border:1px solid var(--line);border-bottom-left-radius:3px}
+.msg .m-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.msg .m-src{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;font-size:12px}
+.msg .m-src .hit{padding:6px 0}
+.msg .m-src .hit b{font-weight:600}
+.msg .m-src .score{color:var(--muted);margin-left:6px}
+.msg details summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:4px}
+.m-fb{display:flex;gap:6px;margin-top:8px}
+.m-fb button{padding:3px 10px;font-size:11px;background:transparent;color:var(--ink);border:1px solid var(--line)}
+.m-fb button:hover{background:#efece4}
+.chat-input{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:end;margin-top:8px}
+.chat-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+.badge{font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);background:#fff}
+.badge-ai{background:#eef6f0;color:var(--ok);border-color:#c4ddcb}
+.badge-rule{background:#f6f1e4;color:#8a6d1f;border-color:#e6d9b5}
+.chip{font-size:11px;padding:2px 8px;border-radius:4px;background:#f2f1ec;border:1px solid var(--line)}
+/* 文档管理 */
+.doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:8px 2px;border-bottom:1px dashed var(--line);font-size:13px}
+.doc-row:last-child{border-bottom:none}
+.doc-row .n{font-weight:500}
+.doc-row .c{color:var(--muted);margin-left:8px;font-size:12px}
+.doc-row button{padding:4px 10px;font-size:12px}
+.upload-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+.upload-row input[type=file]{padding:7px}
+/* 评估 */
+.eval-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media (max-width:640px){.eval-grid{grid-template-columns:repeat(2,1fr)}.chat-input{grid-template-columns:1fr}.msg{max-width:94%}}
+.eval-item{background:#f7f5ef;border:1px solid var(--line);border-radius:6px;padding:9px}
+.eval-item .k{font-size:11px;color:var(--muted)}
+.eval-item .v{font-size:18px;font-weight:700}
+.foot{color:var(--muted);font-size:12px;text-align:center;padding:16px}
+.toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:100;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:#1b1e23;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;
+  opacity:0;transform:translateY(8px);transition:.2s;max-width:90vw}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--danger)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <div class="brand"><i></i>RAG 知识库问答系统</div>
+      <div class="sub">设备运维知识库 · 向量检索 + 大模型生成 · 回答带来源引用</div>
+    </div>
+    <div class="state" id="state">加载中…</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- 对话 -->
+  <section class="card">
+    <h2>对话</h2>
+    <div class="chat" id="chat">
+      <div class="msg bot">你好，我是设备运维知识库助手。可以问我：光猫 LOS 红灯怎么办？摄像头能 ping 通但没有画面怎么排查？</div>
+    </div>
+    <div class="chat-input">
+      <textarea id="question" rows="2" maxlength="300"
+        placeholder="输入问题，Ctrl+Enter 发送（支持多轮追问）"></textarea>
+      <button id="sendBtn">发送</button>
+    </div>
+    <div class="chat-tools">
+      <span>Top-K</span>
+      <select id="topK" style="width:70px">
+        <option>3</option><option selected>5</option><option>8</option>
+      </select>
+      <button class="ghost" id="clearChat" style="padding:4px 10px;font-size:12px">清空对话</button>
+      <span id="modeHint"></span>
+    </div>
+  </section>
+
+  <!-- 知识库管理 -->
+  <section class="card">
+    <h2>知识库管理</h2>
+    <div class="upload-row">
+      <input id="fileInput" type="file" accept=".md,.txt" multiple>
+      <button id="uploadBtn" class="ghost">上传</button>
+      <button id="rebuildBtn">重建索引</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">
+      支持 .md / .txt。上传或删除文档后需点击「重建索引」才生效（约 20-30 秒）。
+    </div>
+    <div id="docList" style="margin-top:8px">加载中…</div>
+  </section>
+
+  <!-- 评估 -->
+  <section class="card">
+    <h2>检索评估</h2>
+    <div class="eval-grid" id="evalGrid">
+      <div class="eval-item"><div class="k">状态</div><div class="v" style="font-size:13px">加载中…</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px" id="evalNote"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  知识库文档可动态上传 · BGE 中文向量 · 演示数据均为虚构
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(msg, type){
+  let wrap = document.querySelector('.toast-wrap');
+  if (!wrap) { wrap = document.createElement('div'); wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 2800);
+}
+
+async function api(url, opts){
+  let res;
+  try { res = await fetch(url, opts); }
+  catch (e) { throw new Error('本地服务未响应'); }
+  let data = {};
+  try { data = await res.json(); } catch (e) { data = {error: '响应解析失败'}; }
+  if (!res.ok) throw new Error(data.error || ('请求失败 ' + res.status));
+  return data;
+}
+
+/* ---------- 对话 ---------- */
+const history = [];   // [{q, a}]
+const chat = $('chat');
+
+function scrollBottom(){ chat.scrollTop = chat.scrollHeight; }
+
+function addUser(text){
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.textContent = text;
+  chat.appendChild(el);
+  scrollBottom();
+}
+
+function addBot(r, question){
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  const mode = r.mode === 'llm' ? '大模型生成' : (r.mode === 'retrieval_only' ? '检索模式' : (r.mode === 'fallback' ? '已降级' : '无结果'));
+  const badge = r.mode === 'llm' ? 'badge-ai' : 'badge-rule';
+  const hits = (r.hits || []).map((h, i) =>
+    '<div class="hit"><b>[' + (i + 1) + '] ' + esc(h.source) + '｜' + esc(h.heading) + '</b>' +
+    '<span class="score">相似度 ' + h.score.toFixed(3) + '</span>' +
+    (h.text.length > 120 ? '<details><summary>查看原文</summary><div style="color:#3c4148;white-space:pre-wrap;margin-top:4px">' + esc(h.text) + '</div></details>' : '') +
+    '</div>').join('');
+  el.innerHTML =
+    '<div class="m-meta"><span class="badge ' + badge + '">' + esc(mode) + '</span>' +
+    '<span class="chip">置信度 ' + Math.round((r.confidence || 0) * 100) + '%</span>' +
+    (r.usage && r.usage.total_tokens ? '<span class="chip">' + r.usage.total_tokens + ' tokens</span>' : '') +
+    (r.covered === false ? '<span class="chip" style="color:var(--danger)">知识库未覆盖</span>' : '') + '</div>' +
+    '<div>' + esc(r.answer || '') + '</div>' +
+    (hits ? '<div class="m-src">来源' + hits + '</div>' : '') +
+    '<div class="m-fb"><button data-fb="1">有用</button><button data-fb="0">没用</button></div>';
+  el.dataset.question = question || '';
+  el.dataset.mode = r.mode || '';
+  el.dataset.source = (r.hits && r.hits[0] && r.hits[0].source) || '';
+  chat.appendChild(el);
+  scrollBottom();
+}
+
+async function send(){
+  const q = $('question').value.trim();
+  if (!q) { toast('请输入问题', 'err'); $('question').focus(); return; }
+  addUser(q);
+  $('question').value = '';
+  $('sendBtn').disabled = true;
+  $('sendBtn').textContent = '检索中…';
+  try {
+    const r = await api('/api/ask', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q, top_k: parseInt($('topK').value, 10), history})
+    });
+    addBot(r, q);
+    history.push({q: q, a: (r.answer || '').slice(0, 200)});
+    if (history.length > 10) history.shift();
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    $('sendBtn').disabled = false;
+    $('sendBtn').textContent = '发送';
+  }
+}
+
+$('sendBtn').addEventListener('click', send);
+$('question').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
+});
+$('clearChat').addEventListener('click', () => {
+  history.length = 0;
+  chat.innerHTML = '<div class="msg bot">对话已清空，可以重新提问。</div>';
+});
+
+// 反馈（事件委托）
+chat.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-fb]');
+  if (!btn) return;
+  const msg = btn.closest('.msg');
+  try {
+    await api('/api/feedback', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        question: msg.dataset.question || '',
+        helpful: btn.dataset.fb === '1',
+        mode: msg.dataset.mode || '',
+        top_source: msg.dataset.source || ''
+      })
+    });
+    toast('已记录，感谢反馈', 'ok');
+    btn.parentElement.innerHTML = '<span style="font-size:12px;color:var(--muted)">已记录反馈</span>';
+  } catch (err) { toast(err.message, 'err'); }
+});
+
+/* ---------- 知识库管理 ---------- */
+async function loadDocs(){
+  try {
+    const r = await api('/api/docs');
+    $('docList').innerHTML = r.docs.length
+      ? r.docs.map(d => '<div class="doc-row"><span><span class="n">' + esc(d.name) + '</span><span class="c">' + d.chars + ' 字</span></span>' +
+        '<button class="ghost danger" data-del="' + esc(d.name) + '">删除</button></div>').join('')
+      : '<div style="color:var(--muted);font-size:13px">知识库为空，请先上传文档</div>';
+    Array.from(document.querySelectorAll('[data-del]')).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('删除「' + btn.dataset.del + '」？删除后需重建索引生效。')) return;
+        try {
+          await api('/api/docs/' + encodeURIComponent(btn.dataset.del), {method: 'DELETE'});
+          toast('已删除，请点击重建索引', 'ok');
+          loadDocs();
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    });
+  } catch (e) {
+    $('docList').textContent = e.message;
+  }
+}
+
+$('uploadBtn').addEventListener('click', async () => {
+  const files = $('fileInput').files;
+  if (!files || !files.length) { toast('请先选择文件', 'err'); return; }
+  const fd = new FormData();
+  Array.from(files).forEach(f => fd.append('files', f));
+  $('uploadBtn').disabled = true;
+  try {
+    const r = await api('/api/upload', {method: 'POST', body: fd});
+    toast('已上传 ' + r.saved.length + ' 个文件' + (r.skipped.length ? '，跳过 ' + r.skipped.length + ' 个' : '') + '，请重建索引', 'ok');
+    $('fileInput').value = '';
+    loadDocs();
+  } catch (e) { toast(e.message, 'err'); }
+  finally { $('uploadBtn').disabled = false; }
+});
+
+$('rebuildBtn').addEventListener('click', async () => {
+  $('rebuildBtn').disabled = true;
+  $('rebuildBtn').textContent = '重建中…';
+  try {
+    const r = await api('/api/rebuild', {method: 'POST'});
+    toast('索引完成：' + r.docs + ' 篇 → ' + r.chunks + ' 块', 'ok');
+    loadStats();
+  } catch (e) { toast(e.message, 'err'); }
+  finally {
+    $('rebuildBtn').disabled = false;
+    $('rebuildBtn').textContent = '重建索引';
+  }
+});
+
+/* ---------- 统计与评估 ---------- */
+async function loadStats(){
+  try {
+    const s = await api('/api/stats');
+    $('state').textContent = s.count + ' 块 · ' + s.embedding_model +
+      ' · ' + (s.llm_configured ? '大模型模式' : '检索模式');
+    $('modeHint').textContent = s.llm_configured ? '' : '未配置 Key：返回检索结果';
+  } catch (e) { $('state').textContent = e.message; }
+}
+
+async function loadEval(){
+  try {
+    const r = await api('/api/eval');
+    const m = r.metrics || {};
+    const items = [
+      ['测试集', r.total + ' 题'],
+      ['Recall@1', (m['Recall@1'] * 100).toFixed(1) + '%'],
+      ['Recall@5', (m['Recall@5'] * 100).toFixed(1) + '%'],
+      ['Hit@5', (m['Hit@5'] * 100).toFixed(1) + '%'],
+      ['MRR', r.mrr.toFixed(3)],
+    ];
+    $('evalGrid').innerHTML = items.map(([k, v]) =>
+      '<div class="eval-item"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('');
+    $('evalNote').textContent = '检索方式：向量召回 + 关键词加权；更新知识库后请重跑 tools/run_eval.py';
+  } catch (e) {
+    $('evalGrid').innerHTML = '<div class="eval-item"><div class="k">状态</div><div class="v" style="font-size:13px">未运行评估</div></div>';
+    $('evalNote').textContent = '执行 python tools/run_eval.py 生成评估结果';
+  }
+}
+
+loadStats();
+loadDocs();
+loadEval();
+
+// 演示参数：?demo=1 自动提问（截图/答辩演示用）
+if (new URLSearchParams(location.search).get('demo') === '1') {
+  $('question').value = '光猫 LOS 红灯一直亮怎么办？';
+  setTimeout(send, 800);
+}
+</script>
+</body>
+</html>

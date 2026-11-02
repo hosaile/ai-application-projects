@@ -1,0 +1,92 @@
+# RAG 知识库问答系统（毕业设计）
+
+基于大语言模型 + 向量检索的设备运维知识库问答系统。提问 → 检索知识库 → 大模型生成带来源引用的回答，支持多轮对话、知识库文档动态上传与防幻觉降级。
+
+## 快速开始
+
+```bash
+cd 毕设_RAG知识库系统
+
+# 1) 依赖（已安装可跳过）
+pip install chromadb sentence-transformers flask openai
+
+# 2) 建立向量索引（首次或文档变更后；也可在页面点「重建索引」）
+python tools/build_index.py
+
+# 3) 运行检索评估
+python tools/run_eval.py
+
+# 4) 启动问答服务
+python app.py            # 默认 http://127.0.0.1:8100/（仅本机）
+HOST=0.0.0.0 python app.py   # 需要局域网手机访问时
+```
+
+Windows 下若出现 Keras/Transformers 冲突，设置 `USE_TF=0`（代码内已默认设置）。
+
+## 配置
+
+`config.json`：
+
+```json
+{
+  "embedding_model": "BAAI/bge-small-zh-v1.5",
+  "chunk_size": 400,
+  "chunk_overlap": 50,
+  "top_k": 5,
+  "docs_dir": "data/docs",
+  "chroma_dir": "data/chroma",
+  "llm": {"base_url": "https://api.deepseek.com", "model": "deepseek-flash",
+          "api_key": "", "temperature": 0.2, "max_tokens": 800, "timeout": 30}
+}
+```
+
+- `llm.api_key` 为空时运行在**检索模式**（返回最相关片段，可离线演示）
+- 填入 Key 后为**大模型生成模式**（答案 + 来源 + token 用量）
+
+## 目录结构
+
+```
+毕设_RAG知识库系统/
+├── app.py                # Flask 服务（/api/ask、/api/stats、/api/eval、/api/feedback）
+├── config.json
+├── rag/
+│   ├── ingest.py         # 文档加载 + 按标题分节 + 窗口切分
+│   ├── embed.py          # bge 中文向量化
+│   ├── store.py          # Chroma 索引（重建/检索/统计）
+│   ├── retrieve.py       # 召回 + 章节去重 + 关键词加权
+│   ├── generate.py       # 提示词 + LLM 调用 + JSON 校验 + 降级
+│   └── evaluate.py       # Recall@K / Hit@K / MRR
+├── data/
+│   ├── docs/             # 9 篇知识库文档
+│   ├── chroma/           # 向量索引（自动生成）
+│   └── tests/            # 34 题评估集与结果
+├── static/index.html     # 问答界面
+├── tools/build_index.py  # 建索引
+├── tools/run_eval.py     # 跑评估
+├── 论文/论文框架与初稿.md
+└── 截图/
+```
+
+## 当前指标（34 题测试集）
+
+| 指标 | K=1 | K=3 | K=5 |
+|---|---|---|---|
+| Recall@K | 0.588 | 0.750 | 0.809 |
+| Hit@K | 0.647 | 0.794 | 0.853 |
+| MRR | 0.734 | — | — |
+
+索引：9 篇文档 → 89 块（chunk 400 / overlap 50）。
+
+## 常用命令
+
+```bash
+python tools/build_index.py     # 重建索引
+python tools/run_eval.py        # 评估（--hybrid 0 可测纯向量）
+PORT=8100 python app.py         # 指定端口启动
+curl -X POST localhost:8100/api/ask -d '{"question":"光猫LOS红灯","top_k":5}' -H "Content-Type: application/json"
+```
+
+## 说明
+
+- 知识库内容来自个人整理的排障资料与设备手册（演示用，实际设备以厂商文档为准）。
+- 回答均附来源章节与相似度，便于核对；模型不可用时自动降级为检索模式。

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 运行数据与索引
+data/chroma/
+*.db
+*.db.bak
+*.log
+tickets.db
+
+# 密钥（模板保留：config.example.json）
+config.json
+
+# 系统
+.DS_Store
+Thumbs.db
