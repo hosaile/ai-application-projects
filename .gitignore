@@ -18,3 +18,9 @@ config.json
 # 系统
 .DS_Store
 Thumbs.db
+
+# 打包产物与模型（运行时自动下载）
+models/
+dist/
+build_pyi/
+.venv_build/

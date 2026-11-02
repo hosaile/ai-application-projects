@@ -23,6 +23,27 @@ HOST=0.0.0.0 python app.py   # 需要局域网手机访问时
 
 Windows 下若出现 Keras/Transformers 冲突，设置 `USE_TF=0`（代码内已默认设置）。
 
+## 桌面版（双击即用，推荐演示）
+
+打包产物：`dist/RAG知识库系统/RAG知识库系统.exe`（完整包 737MB，压缩后 318MB）
+
+- **双击启动**：自动启动本地服务并打开应用窗口（内置向量模型与预建索引，**目标电脑无需安装 Python**）
+- 首次运行在 exe 同级生成 `data/`（知识库文档与索引）和 `config.json`
+- 填 API Key：编辑 exe 同级的 `config.json` → `llm.api_key`，重启生效；不填为检索模式
+- 关闭窗口后服务仍在后台，可在任务管理器结束 `RAG知识库系统.exe`
+
+重新打包（需先建 venv 安装 CPU 版 torch）：
+
+```bash
+python -m venv .venv_build
+.venv_build\Scripts\pip install torch==2.6.0 transformers sentence-transformers chromadb flask openai pyinstaller
+.venv_build\Scripts\pyinstaller --noconfirm --onedir --windowed --name "RAG知识库系统" ^
+  --hidden-import encodings.idna --collect-all chromadb ^
+  --add-data "static;static" --add-data "models;models" ^
+  --add-data "data/docs;data/docs" --add-data "data/chroma;data/chroma" ^
+  --add-data "config.example.json;." desktop_rag.py
+```
+
 ## 配置
 
 `config.json`：
