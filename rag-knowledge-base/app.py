@@ -13,7 +13,7 @@ sys.path.insert(0, ROOT)
 
 from flask import Flask, jsonify, request
 
-from rag import generate, retrieve, store
+from rag import generate, providers, retrieve, store
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.json.ensure_ascii = False
@@ -24,6 +24,7 @@ DOCS_FALLBACK = os.path.join(ROOT, 'data', 'docs')
 ALLOWED_EXT = ('.md', '.txt')
 MAX_UPLOAD = 2 * 1024 * 1024  # 单文件 2MB
 _REBUILD_LOCK = threading.Lock()
+_SETTINGS_LOCK = threading.Lock()
 
 
 def data_root():
@@ -115,7 +116,12 @@ def ask():
         full = store.section_text(chroma_dir(), meta.get('source', ''), meta.get('heading', ''))
         if full:
             hits[0]['full_text'] = full
-    result = generate.answer(q, hits, cfg, history=history)
+    resolved = providers.resolve(cfg, data.get('provider_id'), data.get('model_id'),
+                                 data.get('reasoning'))
+    call_cfg = dict(cfg)
+    call_cfg['llm'] = resolved['llm']
+    result = generate.answer(q, hits, call_cfg, history=history)
+    result['model'] = resolved['meta']
     result['question'] = q
     result['top_k'] = top_k
     result['hits'] = [{
@@ -212,7 +218,9 @@ def stats():
     s['embedding_model'] = cfg['embedding_model']
     s['chunk_size'] = cfg['chunk_size']
     s['chunk_overlap'] = cfg['chunk_overlap']
-    s['llm_configured'] = bool((cfg.get('llm') or {}).get('api_key', '').strip())
+    info = providers.active_info(cfg)
+    s['active_model'] = info
+    s['llm_configured'] = bool(info.get('configured'))
     return jsonify(s)
 
 
@@ -223,6 +231,72 @@ def eval_result():
         return jsonify({'error': '尚未运行评估，请执行 python tools/run_eval.py'}), 404
     with open(path, encoding='utf-8') as f:
         return jsonify(json.load(f))
+
+
+@app.route('/api/settings/models', methods=['GET'])
+def settings_models():
+    return jsonify(providers.public(load_cfg()))
+
+
+@app.route('/api/settings/models', methods=['PUT'])
+def save_settings_models():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': '请求格式错误'}), 400
+    with _SETTINGS_LOCK:
+        cfg = load_cfg()
+        try:
+            provs, active = providers.merge_for_save(
+                cfg, data.get('providers'), data.get('active'))
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        cfg['providers'] = provs
+        cfg['active'] = active
+        cfg['llm'] = providers.legacy_llm(cfg, provs, active)
+        try:
+            providers.write_config(CONFIG, cfg)
+        except Exception as e:
+            return jsonify({'error': '保存配置失败：%s' % str(e)[:120]}), 500
+    return jsonify(providers.public(cfg))
+
+
+@app.route('/api/settings/active', methods=['POST'])
+def set_active_model():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': '请求格式错误'}), 400
+    with _SETTINGS_LOCK:
+        cfg = load_cfg()
+        provs, _ = providers.normalize(cfg)
+        try:
+            active = providers.set_active(provs, data)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        cfg['providers'] = provs
+        cfg['active'] = active
+        cfg['llm'] = providers.legacy_llm(cfg, provs, active)
+        try:
+            providers.write_config(CONFIG, cfg)
+        except Exception as e:
+            return jsonify({'error': '保存配置失败：%s' % str(e)[:120]}), 500
+    return jsonify(providers.public(cfg))
+
+
+@app.route('/api/settings/test', methods=['POST'])
+def test_model():
+    data = request.get_json(silent=True) or {}
+    cfg = load_cfg()
+    resolved = providers.resolve(cfg, data.get('provider_id'), data.get('model_id'),
+                                 data.get('reasoning'))
+    if not resolved.get('configured'):
+        return jsonify({'ok': False, 'error': '该模型未配置 API Key，无法测试'})
+    try:
+        out = generate.test_connection(resolved['llm'])
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:300]})
+    out['ok'] = True
+    out['model'] = resolved['meta']
+    return jsonify(out)
 
 
 @app.route('/api/feedback', methods=['POST'])

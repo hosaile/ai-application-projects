@@ -18,6 +18,7 @@
 
 **核心能力**
 - 三视图工作台：对话 / 知识库 / 检索评估，桌面与移动端自适应；回答 Markdown 渲染、来源卡片可展开、支持复制与导出记录
+- 多供应商模型配置：自定义 Base URL / API 格式 / Key，多模型、上下文窗口、最大输出、思考等级与推理参数映射；输入框旁可切换供应商 / 模型 / 思考深度
 - 知识库文档拖拽上传 / 搜索 / 删除，一键重建索引（无需命令行），变更后提示“待重建”
 - 多轮对话：保留上下文，支持“那重启之后呢”这类指代追问（自动拼接上一轮问题检索）
 - 防幻觉：提示词只允许依据检索资料、强制 JSON 输出校验、模型不可用或输出异常时降级为检索模式
@@ -34,7 +35,7 @@ python tools/build_index.py
 python app.py          # http://127.0.0.1:8100/
 ```
 
-**桌面版（双击即用，无需安装 Python）**：[Releases v1.1](https://github.com/hosaile/ai-application-projects/releases/tag/v1.1) 下载 302MB zip → 解压 → 双击 `RAG知识库系统.exe`。内置向量模型与预建索引；不填 API Key 为检索模式，填 Key 为大模型模式。
+**桌面版（双击即用，无需安装 Python）**：[Releases v1.2](https://github.com/hosaile/ai-application-projects/releases/tag/v1.2) 下载 302MB zip → 解压 → 双击 `RAG知识库系统.exe`。内置向量模型与预建索引；不填 API Key 为检索模式，填 Key 为大模型模式。
 
 更多说明见 [rag-knowledge-base/README.md](rag-knowledge-base/README.md)，体检报告见 [审计/体检报告](rag-knowledge-base/审计/体检报告_20261102.md)。
 

@@ -23,6 +23,38 @@
 - **对话**：Markdown 渲染、检索加载态、来源卡片（文档 / 章节 / 相似度 / 原文）、复制回答、有用/没用反馈、导出 Markdown
 - **知识库**：拖拽上传、文档搜索、删除二次确认、待重建提示、重建进度与耗时
 - **评估**：Recall@1/3/5、Hit@5、MRR 指标卡，以及未命中案例列表（失败归因）
+- **模型设置**：自定义供应商、多模型、上下文窗口、最大输出、思考等级与推理参数映射；对话框旁可切换供应商/模型/思考深度
+
+## 模型设置（多供应商）
+
+![模型设置](screenshots/model-settings.png)
+
+![添加模型](screenshots/model-add.png)
+
+![添加供应商](screenshots/model-provider-add.png)
+
+打开侧边栏「模型设置」或点击右上角状态胶囊：
+
+- **供应商**：名称、Base URL、API 格式（OpenAI Chat Completions / Anthropic Messages）、API Key、启停、超时
+- **模型**：模型 ID、显示名称、上下文窗口、最大输出 Token、思考等级、推理参数映射、输入类型/能力、启停
+- **对话选择器**：输入框左侧切换供应商与模型，`思考 · low/high` 胶囊快速切换推理等级
+- **Key 安全**：只写入本机 `config.json`；接口只返回 `has_key`，不回传明文
+- **连接测试**：保存后发送一个最小请求，验证 Base URL / Key / 模型名
+
+思考等级与参数映射示例（仅对支持 `reasoning_effort` 的模型有效；不同厂商参数名不同）：
+
+```json
+{
+  "reasoning_levels": ["low", "medium", "high"],
+  "reasoning_params": {
+    "low": {"reasoning_effort": "low"},
+    "medium": {"reasoning_effort": "medium"},
+    "high": {"reasoning_effort": "high"}
+  }
+}
+```
+
+上下文窗口用于裁剪检索资料（按 1 字≈1 token 保守估算），最大输出 Token 作为请求的 `max_tokens`。
 
 ## 快速开始
 
@@ -51,7 +83,7 @@ Windows 下若出现 Keras/Transformers 冲突，设置 `USE_TF=0`（代码内�
 
 - **双击启动**：自动启动本地服务并打开应用窗口（内置向量模型与预建索引，**目标电脑无需安装 Python**）
 - 首次运行在 exe 同级生成 `data/`（知识库文档与索引）和 `config.json`
-- 填 API Key：编辑 exe 同级的 `config.json` → `llm.api_key`，重启生效；不填为检索模式
+- 填 API Key：打开应用 →「模型设置」→ 选择供应商填写 Key；也可编辑 exe 同级的 `config.json`；不填为检索模式
 - 关闭窗口后服务仍在后台，可在任务管理器结束 `RAG知识库系统.exe`
 
 重新打包（需先建 venv 安装 CPU 版 torch）：
@@ -69,29 +101,48 @@ python -m venv .venv_build
 
 ## 配置
 
-`config.json`：
+`config.json` 主要字段：
 
 ```json
 {
-  "embedding_model": "BAAI/bge-small-zh-v1.5",
-  "chunk_size": 400,
-  "chunk_overlap": 50,
-  "top_k": 5,
-  "docs_dir": "data/docs",
-  "chroma_dir": "data/chroma",
-  "llm": {"base_url": "https://api.deepseek.com", "model": "deepseek-flash",
-          "api_key": "", "temperature": 0.2, "max_tokens": 800, "timeout": 30}
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "base_url": "https://api.deepseek.com",
+      "api_format": "openai",
+      "api_key": "",
+      "enabled": true,
+      "timeout": 60,
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "model_id": "deepseek-flash",
+          "name": "DeepSeek Flash",
+          "context_window": 128000,
+          "max_output": 800,
+          "reasoning_levels": [],
+          "reasoning_params": {},
+          "capabilities": {"text": true, "structured_output": true, "system_messages": true},
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "active": {"provider_id": "deepseek", "model_id": "deepseek-flash", "reasoning": ""}
 }
 ```
 
-- `llm.api_key` 为空时运行在**检索模式**（返回最相关资料原文，可离线演示）
-- 填入 Key 后为**大模型生成模式**（答案 + 来源 + token 用量）
+- 推荐直接在页面「模型设置」里改，保存后立即生效，无需重启
+- `api_key` 为空且不是本机地址时运行在**检索模式**；本机 Ollama 等无需 Key 的地址会自动使用
+- 旧版只有 `llm` 字段的配置会在读取时自动迁移出一个默认供应商
+- `api_format` 支持 `openai`（Chat Completions）与 `anthropic`（Messages）
 
 ## 目录结构
 
 ```
 rag-knowledge-base/
-├── app.py                # Flask 服务（/api/ask、/api/stats、/api/eval、/api/feedback）
+├── app.py                # Flask 服务（/api/ask、/api/settings/*、/api/stats、/api/eval、/api/feedback）
 ├── desktop_rag.py        # 桌面启动器（PyInstaller 入口）
 ├── config.example.json   # 配置模板（不含 Key）
 ├── rag/
@@ -99,7 +150,8 @@ rag-knowledge-base/
 │   ├── embed.py          # bge 中文向量化
 │   ├── store.py          # Chroma 索引（重建/检索/统计/章节全文）
 │   ├── retrieve.py       # 召回 + 章节去重 + 关键词加权
-│   ├── generate.py       # 提示词 + LLM 调用 + JSON 校验 + 降级
+│   ├── generate.py       # 提示词 + OpenAI/Anthropic 调用 + JSON 校验 + 降级
+│   ├── providers.py      # 供应商/模型配置：迁移、校验、脱敏、解析
 │   └── evaluate.py       # Recall@K / Hit@K / MRR
 ├── data/
 │   ├── docs/             # 9 篇知识库文档

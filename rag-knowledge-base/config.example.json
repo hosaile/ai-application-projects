@@ -12,5 +12,42 @@
     "temperature": 0.2,
     "max_tokens": 800,
     "timeout": 30
+  },
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "base_url": "https://api.deepseek.com",
+      "api_format": "openai",
+      "api_key": "",
+      "enabled": true,
+      "timeout": 60,
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "model_id": "deepseek-flash",
+          "name": "DeepSeek Flash",
+          "context_window": 128000,
+          "max_output": 800,
+          "reasoning_levels": [],
+          "reasoning_params": {},
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "active": {
+    "provider_id": "deepseek",
+    "model_id": "deepseek-flash",
+    "reasoning": ""
   }
 }
