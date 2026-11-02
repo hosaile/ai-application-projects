@@ -33,6 +33,10 @@
 
 ![添加供应商](screenshots/model-provider-add.png)
 
+移动端模型选择：
+
+<img src="screenshots/model-mobile.png" width="320" alt="移动端模型选择">
+
 打开侧边栏「模型设置」或点击右上角状态胶囊：
 
 - **供应商**：名称、Base URL、API 格式（OpenAI Chat Completions / Anthropic Messages）、API Key、启停、超时
