@@ -1534,6 +1534,7 @@ async function loadEval(){
 /* ---------- 模型选择 / 供应商设置 ---------- */
 const PRESETS = [
   {name:'DeepSeek', base_url:'https://api.deepseek.com', api_format:'openai'},
+  {name:'OpenCode Go', base_url:'https://opencode.ai/inference/go/openai/v1', api_format:'openai'},
   {name:'阿里云百炼', base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1', api_format:'openai'},
   {name:'智谱 GLM', base_url:'https://open.bigmodel.cn/api/paas/v4', api_format:'openai'},
   {name:'Kimi', base_url:'https://api.moonshot.cn/v1', api_format:'openai'},
@@ -1817,6 +1818,9 @@ function renderMmDetail(){
     return;
   }
   const models = p.models || [];
+  const headerText = p._headersText !== undefined
+    ? p._headersText
+    : (p.headers && Object.keys(p.headers).length ? JSON.stringify(p.headers, null, 2) : '');
   $('mmDetail').innerHTML =
     '<form id="mmDetailForm" autocomplete="off" onsubmit="return false">' +
     '<div class="mm-title-row"><h3>' + esc(p.name || '未命名供应商') + '</h3>' +
@@ -1840,6 +1844,10 @@ function renderMmDetail(){
       '<div class="key-hint">' + (p.has_key ? '已保存 Key，留空保持不变' : '未配置 Key') +
       (p.has_key ? ' <button id="mmClearKey" type="button">清除 Key</button>' : '') +
       '</div></label>' +
+    '<label class="mm-field">自定义请求头（JSON，可选）' +
+      '<textarea class="mm-input mm-code" id="mmProvHeaders" rows="2" placeholder=\'{"x-opencode-session":"..."}\'>' +
+      esc(headerText) + '</textarea></label>' +
+    '<div class="mm-hint">OpenCode Go 会自动补 x-opencode-session；不要把 API Key 写在这里。</div>' +
     '<div class="mm-model-head"><span>模型列表</span>' +
       '<button id="mmAddModel" type="button">+ 添加模型</button></div>' +
     '<div>' + (models.length ? models.map(modelRowHtml).join('') :
@@ -1858,6 +1866,7 @@ function cleanProviderForSave(p){
     api_format: p.api_format || 'openai',
     enabled: !!p.enabled,
     timeout: Number(p.timeout) || 60,
+    headers: p.headers || {},
     models: (p.models || []).map(m => ({
       id: m.id,
       model_id: m.model_id,
@@ -1878,6 +1887,16 @@ function cleanProviderForSave(p){
 async function saveMm(silent){
   if (!mmDraft) return false;
   for (const p of (mmDraft.providers || [])) {
+    if (p._headersText !== undefined) {
+      try {
+        const parsed = JSON.parse(p._headersText || '{}');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('bad');
+        p.headers = parsed;
+      } catch (e) {
+        toast('「' + (p.name || '供应商') + '」的自定义请求头必须是 JSON 对象', 'err');
+        return false;
+      }
+    }
     if (!String(p.name || '').trim()) { toast('供应商名称不能为空', 'err'); return false; }
     if (!/^https?:\/\//i.test(String(p.base_url || ''))) {
       toast('Base URL 必须以 http:// 或 https:// 开头', 'err'); return false;
@@ -1983,6 +2002,10 @@ $('mmDetail').addEventListener('input', e => {
     if (e.target.value) p.clear_key = false;
     markMmDirty();
     renderMmProviders();
+  }
+  else if (e.target.id === 'mmProvHeaders') {
+    p._headersText = e.target.value;
+    markMmDirty();
   }
 });
 $('mmDetail').addEventListener('change', e => {

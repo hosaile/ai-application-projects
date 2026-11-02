@@ -5,6 +5,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+import uuid
 from urllib.parse import urlparse
 
 SYSTEM = (
@@ -110,14 +111,29 @@ def _is_local_base(base_url):
     return host in ('localhost', '127.0.0.1', '0.0.0.0', '::1')
 
 
-def _openai_call(llm, prompt, max_tokens=None, structured=None):
+_OPENCODE_SESSION = 'rag-' + uuid.uuid4().hex
+
+
+def _request_headers(llm, base_url):
+    """自定义请求头；OpenCode Go 必须带 x-opencode-session。"""
+    headers = dict(llm.get('headers') or {})
+    if 'opencode.ai' in str(base_url or '').lower():
+        if not any(k.lower() == 'x-opencode-session' for k in headers):
+            headers['x-opencode-session'] = _OPENCODE_SESSION
+    return headers
+
+
+def _openai_call(llm, prompt, max_tokens=None, structured=None, system=SYSTEM):
     from openai import OpenAI
     base_url = (llm.get('base_url') or '').strip()
     if not base_url:
         raise RuntimeError('未配置 Base URL')
     timeout = float(llm.get('timeout', 60) or 60)
+    headers = _request_headers(llm, base_url)
     client_kwargs = {'api_key': llm.get('api_key') or 'not-needed',
                      'base_url': base_url, 'timeout': timeout}
+    if headers:
+        client_kwargs['default_headers'] = headers
     if _is_local_base(base_url):
         # 本机 mock / Ollama 不能被系统代理劫持
         import httpx
@@ -125,12 +141,15 @@ def _openai_call(llm, prompt, max_tokens=None, structured=None):
     client = OpenAI(**client_kwargs)
     tokens = int(max_tokens or llm.get('max_tokens') or 800)
     use_json = bool(llm.get('structured_output', True)) if structured is None else bool(structured)
+    system_text = SYSTEM if system is None else system
+    if llm.get('system_messages', True) and system_text:
+        messages = [{'role': 'system', 'content': system_text},
+                    {'role': 'user', 'content': prompt}]
+    else:
+        messages = [{'role': 'user', 'content': (system_text + '\n\n' if system_text else '') + prompt}]
     kwargs = {
         'model': llm.get('model') or 'deepseek-flash',
-        'messages': ([{'role': 'system', 'content': SYSTEM},
-                      {'role': 'user', 'content': prompt}]
-                     if llm.get('system_messages', True)
-                     else [{'role': 'user', 'content': SYSTEM + '\n\n' + prompt}]),
+        'messages': messages,
         'temperature': float(llm.get('temperature', 0.2) or 0.2),
         'max_tokens': tokens,
     }
@@ -139,19 +158,29 @@ def _openai_call(llm, prompt, max_tokens=None, structured=None):
     reasoning = llm.get('reasoning_params') or {}
     if isinstance(reasoning, dict) and reasoning:
         kwargs['extra_body'] = reasoning
-    try:
-        resp = client.chat.completions.create(**kwargs)
-    except Exception as e:
-        msg = str(e).lower()
-        if use_json and ('response_format' in msg or 'json_object' in msg):
-            kwargs.pop('response_format', None)
+
+    resp = None
+    for _ in range(3):
+        try:
             resp = client.chat.completions.create(**kwargs)
-        elif 'max_tokens' in msg and 'max_completion_tokens' in msg:
-            kwargs.pop('max_tokens', None)
-            kwargs['max_completion_tokens'] = tokens
-            resp = client.chat.completions.create(**kwargs)
-        else:
+            break
+        except Exception as e:
+            msg = str(e).lower()
+            if use_json and ('response_format' in msg or 'json_object' in msg):
+                kwargs.pop('response_format', None)
+                use_json = False
+                continue
+            if 'temperature' in msg and ('only 1' in msg or 'unsupported' in msg
+                                         or 'not supported' in msg):
+                kwargs.pop('temperature', None)
+                continue
+            if 'max_tokens' in msg and 'max_completion_tokens' in msg:
+                kwargs.pop('max_tokens', None)
+                kwargs['max_completion_tokens'] = tokens
+                continue
             raise
+    if resp is None:
+        raise RuntimeError('模型调用失败')
     content = ''
     if resp.choices:
         content = resp.choices[0].message.content or ''
@@ -171,32 +200,33 @@ def _anthropic_url(base_url):
     return base + '/v1/messages'
 
 
-def _anthropic_call(llm, prompt, max_tokens=None, structured=None):
+def _anthropic_call(llm, prompt, max_tokens=None, structured=None, system=SYSTEM):
     base_url = (llm.get('base_url') or '').strip()
     if not base_url:
         raise RuntimeError('未配置 Base URL')
+    system_text = SYSTEM if system is None else system
     body = {
         'model': llm.get('model') or 'claude-sonnet-4-5',
         'max_tokens': int(max_tokens or llm.get('max_tokens') or 800),
         'temperature': float(llm.get('temperature', 0.2) or 0.2),
         'messages': [{'role': 'user', 'content': prompt}],
     }
-    if llm.get('system_messages', True):
-        body['system'] = SYSTEM
-    else:
-        body['messages'][0]['content'] = SYSTEM + '\n\n' + prompt
+    if llm.get('system_messages', True) and system_text:
+        body['system'] = system_text
+    elif system_text:
+        body['messages'][0]['content'] = system_text + '\n\n' + prompt
     reasoning = llm.get('reasoning_params') or {}
     if isinstance(reasoning, dict) and reasoning:
         body.update(reasoning)
     req = urllib.request.Request(
         _anthropic_url(base_url),
         data=json.dumps(body, ensure_ascii=False).encode('utf-8'),
-        headers={
+        headers=dict(_request_headers(llm, base_url), **{
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'x-api-key': llm.get('api_key') or '',
             'anthropic-version': '2023-06-01',
-        },
+        }),
         method='POST',
     )
     try:
@@ -225,10 +255,12 @@ def _anthropic_call(llm, prompt, max_tokens=None, structured=None):
     return text, _usage_dict(usage.get('input_tokens'), usage.get('output_tokens'))
 
 
-def _call(llm, prompt, max_tokens=None, structured=None):
+def _call(llm, prompt, max_tokens=None, structured=None, system=SYSTEM):
     if (llm.get('api_format') or 'openai') == 'anthropic':
-        return _anthropic_call(llm, prompt, max_tokens=max_tokens, structured=structured)
-    return _openai_call(llm, prompt, max_tokens=max_tokens, structured=structured)
+        return _anthropic_call(llm, prompt, max_tokens=max_tokens,
+                               structured=structured, system=system)
+    return _openai_call(llm, prompt, max_tokens=max_tokens,
+                        structured=structured, system=system)
 
 
 def answer(question, hits, cfg, history=None):
@@ -284,8 +316,9 @@ def test_connection(llm):
     started = time.time()
     content, usage = _call(
         llm, '请只回复 OK 两个字母，不要输出其他内容。',
-        max_tokens=min(32, int(llm.get('max_tokens') or 32)),
+        max_tokens=min(256, int(llm.get('max_tokens') or 256)),
         structured=False,
+        system='你是连通性测试助手，只回复用户要求的内容。',
     )
     return {
         'reply': (content or '').strip()[:200],

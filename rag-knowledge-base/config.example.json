@@ -43,6 +43,158 @@
           "enabled": true
         }
       ]
+    },
+    {
+      "id": "opencode-go",
+      "name": "OpenCode Go",
+      "base_url": "https://opencode.ai/inference/go/openai/v1",
+      "api_format": "openai",
+      "api_key": "",
+      "enabled": true,
+      "timeout": 120,
+      "headers": {},
+      "models": [
+        {
+          "id": "deepseek-v4.1-flash",
+          "model_id": "deepseek-v4.1-flash",
+          "name": "DeepSeek V4.1 Flash",
+          "context_window": 1000000,
+          "max_output": 4096,
+          "reasoning_levels": [
+            "low",
+            "high",
+            "max"
+          ],
+          "reasoning_params": {
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          },
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        },
+        {
+          "id": "glm-5.3-flash",
+          "model_id": "glm-5.3-flash",
+          "name": "GLM-5.3-Flash",
+          "context_window": 1000000,
+          "max_output": 4096,
+          "reasoning_levels": [
+            "low",
+            "high",
+            "max"
+          ],
+          "reasoning_params": {
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          },
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        },
+        {
+          "id": "kimi-k3.1-pro",
+          "model_id": "kimi-k3.1-pro",
+          "name": "Kimi K3.1 Pro",
+          "context_window": 1048576,
+          "max_output": 4096,
+          "reasoning_levels": [
+            "low",
+            "high",
+            "max"
+          ],
+          "reasoning_params": {
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          },
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        },
+        {
+          "id": "minimax-m3.1-flash",
+          "model_id": "minimax-m3.1-flash",
+          "name": "MiniMax M3.1 Flash",
+          "context_window": 1000000,
+          "max_output": 4096,
+          "reasoning_levels": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "reasoning_params": {
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "medium": {
+              "reasoning_effort": "medium"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "xhigh": {
+              "reasoning_effort": "xhigh"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          },
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        }
+      ]
     }
   ],
   "active": {

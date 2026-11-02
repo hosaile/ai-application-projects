@@ -37,11 +37,17 @@
 
 <img src="screenshots/model-mobile.png" width="320" alt="移动端模型选择">
 
+真实模型回答（OpenCode Go · GLM-5.3-Flash）：
+
+![真实模型回答](screenshots/opencode-answer.png)
+
 打开侧边栏「模型设置」或点击右上角状态胶囊：
 
 - **供应商**：名称、Base URL、API 格式（OpenAI Chat Completions / Anthropic Messages）、API Key、启停、超时
 - **模型**：模型 ID、显示名称、上下文窗口、最大输出 Token、思考等级、推理参数映射、输入类型/能力、启停
 - **对话选择器**：输入框左侧切换供应商与模型，`思考 · low/high` 胶囊快速切换推理等级
+- **对接方式**：OpenAI Chat Completions / Anthropic Messages；OpenCode Go 自动补 `x-opencode-session` 请求头，也可在「自定义请求头」里覆盖
+- **参数兼容**：模型不支持自定义温度时自动省略温度重试（如 Kimi K3.1 Pro 只接受 1）；不支持 `response_format` 时自动去掉再试
 - **Key 安全**：只写入本机 `config.json`；接口只返回 `has_key`，不回传明文
 - **连接测试**：保存后发送一个最小请求，验证 Base URL / Key / 模型名
 
@@ -59,6 +65,8 @@
 ```
 
 上下文窗口用于裁剪检索资料（按 1 字≈1 token 保守估算），最大输出 Token 作为请求的 `max_tokens`。
+
+已用 OpenCode Go 实测：DeepSeek V4.1 Flash、GLM-5.3-Flash、Kimi K3.1 Pro、MiniMax M3.1 Flash 均可完成 RAG 问答、JSON 来源引用、多轮追问与不可答拒答；其中 GLM-5.3-Flash 低思考约 7-8 秒，Kimi K3.1 Pro 的 temperature 兼容重试已生效。
 
 ## 快速开始
 

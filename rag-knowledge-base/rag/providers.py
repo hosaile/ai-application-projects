@@ -137,6 +137,22 @@ def _reasoning_params(raw):
     return out
 
 
+def _headers(raw):
+    """供应商自定义请求头（如 OpenCode 的 x-opencode-session）。"""
+    if not isinstance(raw, dict):
+        return {}
+    out = {}
+    for key, value in list(raw.items())[:20]:
+        name = _text(key, 80)
+        val = _text(value, 500)
+        if not name or not val:
+            continue
+        if any(ch in name for ch in '\r\n') or any(ch in val for ch in '\r\n'):
+            continue
+        out[name] = val
+    return out
+
+
 def _model(raw, require_id=True):
     raw = raw if isinstance(raw, dict) else {}
     model_id = _text(raw.get('model_id'), 120)
@@ -196,6 +212,7 @@ def _provider(raw, require_fields=True):
         'api_key': str(raw.get('api_key') or '')[:MAX_KEY_LEN],
         'enabled': _bool(raw.get('enabled'), True),
         'timeout': _int(raw.get('timeout'), 60, 5, 300),
+        'headers': _headers(raw.get('headers')),
         'models': models,
     }
 
@@ -224,6 +241,7 @@ def _legacy(cfg):
         'api_key': str(llm.get('api_key') or '')[:MAX_KEY_LEN],
         'enabled': True,
         'timeout': _int(llm.get('timeout'), 60, 5, 300),
+        'headers': {},
         'models': [model],
     }
     return [provider], {'provider_id': 'default', 'model_id': 'default-model', 'reasoning': ''}
@@ -328,6 +346,7 @@ def merge_for_save(cfg, incoming_providers, incoming_active):
     """合并前端提交：空 Key 表示沿用旧 Key，clear_key=true 表示清除。"""
     existing, _ = normalize(cfg)
     old_keys = {p['id']: p['api_key'] for p in existing}
+    old_headers = {p['id']: p['headers'] for p in existing}
 
     providers = []
     seen = set()
@@ -344,6 +363,8 @@ def merge_for_save(cfg, incoming_providers, incoming_active):
             key = str(raw_key).strip()[:MAX_KEY_LEN]
         payload = dict(item)
         payload['api_key'] = key
+        if 'headers' not in payload:
+            payload['headers'] = old_headers.get(pid, {})
         provider = _provider(payload, require_fields=True)
         if provider['id'] in seen:
             provider['id'] = _new_id('prov_')
@@ -417,6 +438,7 @@ def resolve(cfg, provider_id=None, model_id=None, reasoning=None):
         'reasoning_params': copy.deepcopy(model['reasoning_params'].get(level, {})) if level else {},
         'structured_output': bool(model['capabilities'].get('structured_output', True)),
         'system_messages': bool(model['capabilities'].get('system_messages', True)),
+        'headers': copy.deepcopy(provider['headers']),
         'temperature': temperature,
         'timeout': provider['timeout'],
     }
