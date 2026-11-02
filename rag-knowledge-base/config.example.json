@@ -1,0 +1,16 @@
+{
+  "embedding_model": "BAAI/bge-small-zh-v1.5",
+  "chunk_size": 400,
+  "chunk_overlap": 50,
+  "top_k": 5,
+  "docs_dir": "data/docs",
+  "chroma_dir": "data/chroma",
+  "llm": {
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-flash",
+    "api_key": "",
+    "temperature": 0.2,
+    "max_tokens": 800,
+    "timeout": 30
+  }
+}
