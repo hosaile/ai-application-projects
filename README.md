@@ -17,7 +17,8 @@
 **做什么**：把设备手册与排障文档构建成知识库，用户提问时先做向量检索，再让大模型基于检索资料生成回答，每条回答附带来源章节与相似度。
 
 **核心能力**
-- 知识库文档在页面上传 / 删除，一键重建索引（无需命令行）
+- 三视图工作台：对话 / 知识库 / 检索评估，桌面与移动端自适应；回答 Markdown 渲染、来源卡片可展开、支持复制与导出记录
+- 知识库文档拖拽上传 / 搜索 / 删除，一键重建索引（无需命令行），变更后提示“待重建”
 - 多轮对话：保留上下文，支持“那重启之后呢”这类指代追问（自动拼接上一轮问题检索）
 - 防幻觉：提示词只允许依据检索资料、强制 JSON 输出校验、模型不可用或输出异常时降级为检索模式
 - 评估体系：34 题测试集，Recall@K / Hit@K / MRR；对未命中案例做归因分析
@@ -33,7 +34,7 @@ python tools/build_index.py
 python app.py          # http://127.0.0.1:8100/
 ```
 
-**桌面版（双击即用，无需安装 Python）**：[Releases v1.0](https://github.com/hosaile/ai-application-projects/releases/tag/v1.0) 下载 318MB zip → 解压 → 双击 `RAG知识库系统.exe`。内置向量模型与预建索引；不填 API Key 为检索模式，填 Key 为大模型模式。
+**桌面版（双击即用，无需安装 Python）**：[Releases v1.1](https://github.com/hosaile/ai-application-projects/releases/tag/v1.1) 下载 302MB zip → 解压 → 双击 `RAG知识库系统.exe`。内置向量模型与预建索引；不填 API Key 为检索模式，填 Key 为大模型模式。
 
 更多说明见 [rag-knowledge-base/README.md](rag-knowledge-base/README.md)，体检报告见 [审计/体检报告](rag-knowledge-base/审计/体检报告_20261102.md)。
 

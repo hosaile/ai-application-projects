@@ -78,8 +78,9 @@ def answer(question, hits, cfg, history=None):
     if not key:
         top = hits[0]
         return {
-            'answer': '（未配置模型 API Key，当前为检索模式）最相关资料：%s｜%s\n%s'
-                      % (top['meta']['source'], top['meta']['heading'], top['text'][:200]),
+            'answer': '检索模式：以下为最相关资料原文（%s｜%s）。\n\n%s'
+                      % (top['meta']['source'], top['meta']['heading'],
+                         top.get('full_text') or top['text']),
             'sources': [1], 'confidence': round(top['score'], 3), 'covered': True,
             'mode': 'retrieval_only', 'prompt': prompt, 'usage': {},
         }
@@ -118,7 +119,8 @@ def answer(question, hits, cfg, history=None):
     top = hits[0]
     return {
         'answer': '模型调用失败（%s），已降级为检索结果：%s｜%s\n%s'
-                  % (last_err, top['meta']['source'], top['meta']['heading'], top['text'][:200]),
+                  % (last_err, top['meta']['source'], top['meta']['heading'],
+                     top.get('full_text') or top['text']),
         'sources': [1], 'confidence': round(top['score'], 3), 'covered': True,
         'mode': 'fallback', 'prompt': prompt, 'usage': {},
     }

@@ -18,7 +18,7 @@ from rag import generate, retrieve, store
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.json.ensure_ascii = False
 
-CONFIG = os.path.join(ROOT, 'config.json')
+CONFIG = os.environ.get('RAG_CONFIG') or os.path.join(ROOT, 'config.json')
 FEEDBACK = os.path.join(ROOT, 'data', 'feedback.jsonl')
 DOCS_FALLBACK = os.path.join(ROOT, 'data', 'docs')
 ALLOWED_EXT = ('.md', '.txt')
@@ -26,13 +26,26 @@ MAX_UPLOAD = 2 * 1024 * 1024  # 单文件 2MB
 _REBUILD_LOCK = threading.Lock()
 
 
+def data_root():
+    """数据根目录：桌面版用 exe 同级 data（可写）；源码版用项目 data。"""
+    return os.environ.get('RAG_DATA_DIR') or os.path.join(ROOT, 'data')
+
+
 def docs_dir():
-    """知识库目录以 config.json 为准，与 build_index.py 保持一致。"""
+    """知识库目录：桌面版固定为 data/docs；源码版读 config.json。"""
+    if os.environ.get('RAG_DATA_DIR'):
+        return os.path.join(os.environ['RAG_DATA_DIR'], 'docs')
     try:
         cfg = load_cfg()
         return os.path.join(ROOT, cfg.get('docs_dir') or 'data/docs')
     except Exception:
         return DOCS_FALLBACK
+
+
+def chroma_dir():
+    if os.environ.get('RAG_DATA_DIR'):
+        return os.path.join(os.environ['RAG_DATA_DIR'], 'chroma')
+    return os.path.join(ROOT, load_cfg()['chroma_dir'])
 
 
 def safe_doc_name(name):
@@ -47,12 +60,20 @@ def safe_doc_name(name):
 
 
 def load_cfg():
-    with open(CONFIG, encoding='utf-8') as f:
-        return json.load(f)
-
-
-def chroma_dir():
-    return os.path.join(ROOT, load_cfg()['chroma_dir'])
+    defaults = {
+        'embedding_model': 'BAAI/bge-small-zh-v1.5',
+        'chunk_size': 400, 'chunk_overlap': 50, 'top_k': 5,
+        'docs_dir': 'data/docs', 'chroma_dir': 'data/chroma',
+        'llm': {'base_url': 'https://api.deepseek.com', 'model': 'deepseek-flash',
+                'api_key': '', 'temperature': 0.2, 'max_tokens': 800, 'timeout': 30},
+    }
+    try:
+        with open(CONFIG, encoding='utf-8') as f:
+            cfg = json.load(f)
+        defaults.update(cfg)
+        return defaults
+    except Exception:
+        return defaults
 
 
 @app.route('/')
@@ -89,6 +110,11 @@ def ask():
         if prev_q:
             search_q = prev_q[:120] + ' ' + q
     hits = retrieve.retrieve(search_q, top_k, chroma_dir(), cfg['embedding_model'])
+    if hits:
+        meta = hits[0].get('meta') or {}
+        full = store.section_text(chroma_dir(), meta.get('source', ''), meta.get('heading', ''))
+        if full:
+            hits[0]['full_text'] = full
     result = generate.answer(q, hits, cfg, history=history)
     result['question'] = q
     result['top_k'] = top_k

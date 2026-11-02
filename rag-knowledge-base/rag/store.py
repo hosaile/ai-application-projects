@@ -65,3 +65,34 @@ def stats(chroma_dir, name='kb_v1'):
         return {'count': col.count(), 'name': name}
     except Exception as e:
         return {'count': 0, 'error': str(e)}
+
+
+def _merge_overlap(prev, nxt, max_overlap=80):
+    """拼接相邻块时去掉 50 字重叠，避免同一段步骤出现两遍。"""
+    limit = min(max_overlap, len(prev), len(nxt))
+    for k in range(limit, 0, -1):
+        if prev.endswith(nxt[:k]):
+            return nxt[k:]
+    return nxt
+
+
+def section_text(chroma_dir, source, heading, name='kb_v1', limit=1500):
+    """取同一章节的所有块并按 seq 拼接，供“检索模式”展示完整段落。"""
+    try:
+        col = get_collection(chroma_dir, name)
+        res = col.get(where={'$and': [{'source': source}, {'heading': heading}]},
+                      include=['documents', 'metadatas'])
+        pairs = sorted(zip(res.get('metadatas') or [], res.get('documents') or []),
+                       key=lambda p: int((p[0] or {}).get('seq', 0)))
+        text = ''
+        for _, doc in pairs:
+            doc = (doc or '').strip()
+            if not doc:
+                continue
+            if not text:
+                text = doc
+            else:
+                text = text + '\n' + _merge_overlap(text, doc).lstrip('\n')
+        return text[:limit]
+    except Exception:
+        return ''

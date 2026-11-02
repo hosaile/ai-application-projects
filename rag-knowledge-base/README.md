@@ -2,10 +2,32 @@
 
 基于大语言模型 + 向量检索的设备运维知识库问答系统。提问 → 检索知识库 → 大模型生成带来源引用的回答，支持多轮对话、知识库文档动态上传与防幻觉降级。
 
+界面为三视图工作台（对话 / 知识库 / 检索评估），桌面与移动端自适应。
+
+## 界面
+
+![对话与回答](screenshots/ui.png)
+
+![来源引用](screenshots/ui-sources.png)
+
+![知识库管理](screenshots/ui-kb.png)
+
+![检索评估](screenshots/ui-eval.png)
+
+移动端：
+
+<img src="screenshots/ui-mobile.png" width="320" alt="移动端">
+
+界面特性：
+
+- **对话**：Markdown 渲染、检索加载态、来源卡片（文档 / 章节 / 相似度 / 原文）、复制回答、有用/没用反馈、导出 Markdown
+- **知识库**：拖拽上传、文档搜索、删除二次确认、待重建提示、重建进度与耗时
+- **评估**：Recall@1/3/5、Hit@5、MRR 指标卡，以及未命中案例列表（失败归因）
+
 ## 快速开始
 
 ```bash
-cd 毕设_RAG知识库系统
+cd rag-knowledge-base
 
 # 1) 依赖（已安装可跳过）
 pip install chromadb sentence-transformers flask openai
@@ -25,7 +47,7 @@ Windows 下若出现 Keras/Transformers 冲突，设置 `USE_TF=0`（代码内�
 
 ## 桌面版（双击即用，推荐演示）
 
-打包产物：`dist/RAG知识库系统/RAG知识库系统.exe`（完整包 737MB，压缩后 318MB）
+打包产物：`dist/RAG知识库系统/RAG知识库系统.exe`（完整包约 790MB，压缩后约 302MB）
 
 - **双击启动**：自动启动本地服务并打开应用窗口（内置向量模型与预建索引，**目标电脑无需安装 Python**）
 - 首次运行在 exe 同级生成 `data/`（知识库文档与索引）和 `config.json`
@@ -41,6 +63,7 @@ python -m venv .venv_build
   --hidden-import encodings.idna --collect-all chromadb ^
   --add-data "static;static" --add-data "models;models" ^
   --add-data "data/docs;data/docs" --add-data "data/chroma;data/chroma" ^
+  --add-data "data/tests;data/tests" ^
   --add-data "config.example.json;." desktop_rag.py
 ```
 
@@ -61,19 +84,20 @@ python -m venv .venv_build
 }
 ```
 
-- `llm.api_key` 为空时运行在**检索模式**（返回最相关片段，可离线演示）
+- `llm.api_key` 为空时运行在**检索模式**（返回最相关资料原文，可离线演示）
 - 填入 Key 后为**大模型生成模式**（答案 + 来源 + token 用量）
 
 ## 目录结构
 
 ```
-毕设_RAG知识库系统/
+rag-knowledge-base/
 ├── app.py                # Flask 服务（/api/ask、/api/stats、/api/eval、/api/feedback）
-├── config.json
+├── desktop_rag.py        # 桌面启动器（PyInstaller 入口）
+├── config.example.json   # 配置模板（不含 Key）
 ├── rag/
 │   ├── ingest.py         # 文档加载 + 按标题分节 + 窗口切分
 │   ├── embed.py          # bge 中文向量化
-│   ├── store.py          # Chroma 索引（重建/检索/统计）
+│   ├── store.py          # Chroma 索引（重建/检索/统计/章节全文）
 │   ├── retrieve.py       # 召回 + 章节去重 + 关键词加权
 │   ├── generate.py       # 提示词 + LLM 调用 + JSON 校验 + 降级
 │   └── evaluate.py       # Recall@K / Hit@K / MRR
@@ -81,11 +105,11 @@ python -m venv .venv_build
 │   ├── docs/             # 9 篇知识库文档
 │   ├── chroma/           # 向量索引（自动生成）
 │   └── tests/            # 34 题评估集与结果
-├── static/index.html     # 问答界面
+├── static/index.html     # 三视图工作台（对话 / 知识库 / 检索评估）
+├── screenshots/          # 界面截图
 ├── tools/build_index.py  # 建索引
 ├── tools/run_eval.py     # 跑评估
-├── 论文/论文框架与初稿.md
-└── 截图/
+└── 审计/                 # 独立体检脚本与报告
 ```
 
 ## 当前指标（34 题测试集）
