@@ -1,0 +1,93 @@
+{
+  "app": {
+    "host": "127.0.0.1",
+    "port": 8100,
+    "data_dir": "data",
+    "public_url": ""
+  },
+  "embedding_model": "BAAI/bge-small-zh-v1.5",
+  "chunk_size": 400,
+  "chunk_overlap": 50,
+  "top_k": 5,
+  "docs_dir": "data/docs",
+  "chroma_dir": "data/chroma",
+  "llm": {
+    "base_url": "",
+    "model": "",
+    "api_key": "",
+    "temperature": 0.2,
+    "max_tokens": 800,
+    "timeout": 60
+  },
+  "providers": [
+    {
+      "id": "opencode-go",
+      "name": "OpenCode Go",
+      "base_url": "https://opencode.ai/inference/go/openai/v1",
+      "api_format": "openai",
+      "api_key": "",
+      "enabled": true,
+      "timeout": 120,
+      "headers": {},
+      "models": [
+        {
+          "id": "deepseek-v4.1-flash",
+          "model_id": "deepseek-v4.1-flash",
+          "name": "DeepSeek V4.1 Flash",
+          "context_window": 1000000,
+          "max_output": 4096,
+          "reasoning_levels": [
+            "low",
+            "high",
+            "max"
+          ],
+          "reasoning_params": {
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          },
+          "capabilities": {
+            "text": true,
+            "image": false,
+            "video": false,
+            "pdf": false,
+            "structured_output": true,
+            "web_search": false,
+            "system_messages": true
+          },
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "active": {
+    "provider_id": "opencode-go",
+    "model_id": "deepseek-v4.1-flash",
+    "reasoning": "low"
+  },
+  "rag": {
+    "top_k": 5,
+    "triage_top_k": 3
+  },
+  "repair": {
+    "kb_mode": "rag",
+    "triage_top_k": 3,
+    "fallback_rule": true,
+    "sla_hours": {
+      "高": 4,
+      "中": 24,
+      "低": 72
+    },
+    "admin_password": "",
+    "admin_password_env": "WORKBENCH_ADMIN_PASSWORD"
+  },
+  "field": {
+    "assistant": "网络排障助手.html"
+  }
+}

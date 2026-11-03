@@ -1,6 +1,25 @@
 # AI Application Projects
 
-三个可运行的 AI 应用项目：设备运维知识库 RAG 问答、校园报修 AI 分诊、网络排障助手。
+三个独立 AI 应用 + 一个统一工作台：设备运维知识库 RAG 问答、校园报修 AI 分诊、网络排障助手。
+
+## 统一版本：设备运维智能工作台 v2.0
+
+[device-ops-workbench/](device-ops-workbench/) 把下面三个项目合并成一个本地 Web 应用：一个进程、一个端口、一套模型配置。
+
+![统一工作台](device-ops-workbench/docs/screenshots/qa.png)
+
+- **入口**：`/` 知识问答、`/repair/` 学生报修、`/repair/admin` 工单管理、`/field/` 现场排障、`/start` 角色首页
+- **差异化能力**：资产感知问答（问设备编号自动带档案与历史工单）、问答一键转报修、工单经验沉淀为知识库文档、SLA 超时标记、运营指标看板
+- **统一模型**：一套 `providers` 配置，问答与报修共用；当前配置只保留 `deepseek-v4.1-flash`；不填 Key 自动检索/规则模式
+- **桌面版**：[Release v2.0](https://github.com/hosaile/ai-application-projects/releases/tag/v2.0) 下载约 302MB zip → 解压 → 双击 `设备运维工作台.exe`；内置向量模型、预建索引与 9 篇知识文档
+- **测试**：主流程 **91 项** + 管理员口令 **10 项**，全部通过；自动化测试使用本地 mock 模型，真实模型连接由使用者自填 Key
+- **隐私**：包内无 `config.json`、`tickets.db`、`desktop.log`；`config.example.json` 所有 Key 为空
+
+> 详细说明见 [device-ops-workbench/README.md](device-ops-workbench/README.md)。
+
+---
+
+## 三个独立项目
 
 | 项目 | 类型 | 核心技术 | 关键指标 |
 |---|---|---|---|
@@ -88,6 +107,7 @@ python app.py          # http://127.0.0.1:8000/
 
 ```
 ai-application-projects/
+├── device-ops-workbench/        # 统一工作台（问答 + 报修 + 现场 + 资产 + 指标）
 ├── rag-knowledge-base/          # RAG 问答（源码、知识库、评估、体检）
 ├── campus-repair-ai/            # 校园报修系统（源码、测试、文档）
 └── network-troubleshooting-assistant/  # 排障助手（单文件 + 说明）
@@ -95,10 +115,12 @@ ai-application-projects/
 
 ## 技术亮点
 
-1. **评估驱动**：RAG 项目不是“能跑就行”——34 题测试集量化检索质量，并记录一次失败的调参实验（2-gram 加权导致 Recall@1 下降）作为对比分析。
-2. **防幻觉设计**：提示词约束 + 结构化输出校验 + 覆盖判断/降级，三层保证回答可核对。
-3. **工程可靠性**：报修系统做了 43 项接口回归与 29 项元审计（统计口径独立复算、并发、注入、时间窗口、重启持久化）。
-4. **交付形态多样**：桌面 exe、Web 服务、离线单文件 HTML。
+1. **统一工作台而不是拼页面**：三个模块共享 `core/config` 与 `core/llm`，问答/分诊共用一套模型；报修分诊走 RAG 检索，失败自动退回规则。
+2. **资产感知检索**：问题提到设备编号/名称/位置时，优先返回设备档案与历史工单，解决通用 AI“不知道这台设备”的问题。
+3. **可核对 + 可执行**：回答带来源章节；一键转报修；工单完成后可沉淀为脱敏经验文档并重建索引。
+4. **评估驱动**：RAG 项目 34 题测试集量化检索质量；统一版 91 项主流程 + 10 项口令回归。
+5. **工程可靠性**：报修系统做了 43 项接口回归与 29 项元审计（统计口径独立复算、并发、注入、时间窗口、重启持久化）。
+6. **交付形态多样**：桌面 exe、Web 服务、离线单文件 HTML。
 
 ## 说明
 

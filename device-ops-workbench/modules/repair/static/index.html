@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1e23">
+<title>校园报修 · 智能分诊</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231b1e23'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%23f0b429'/%3E%3Ctext x='36' y='46' font-size='30' fill='%23fff' text-anchor='middle' font-family='sans-serif' font-weight='bold'%3E%E6%8A%A5%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f2f1ec; --card:#fffef9; --ink:#1b1e23; --muted:#6b6f76;
+  --line:#d9d6cc; --safety:#f0b429; --danger:#a5342b; --ok:#2c6b4c; --blue:#2f4f6f;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px}
+.top{background:#1b1e23;color:#fff;padding:20px 0}
+.brand{font-size:22px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:9px;height:9px;background:var(--safety);border-radius:2px}
+.sub{color:#b9bcc2;font-size:13px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;
+  padding:20px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h2{font-size:16px;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid var(--ink)}
+h3{font-size:14px;margin:18px 0 8px;color:var(--ink)}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+.req{color:var(--danger);font-size:12px}
+textarea,input{width:100%;border:1px solid var(--line);border-radius:6px;padding:10px 12px;
+  font:inherit;background:#fff;color:var(--ink);-webkit-appearance:none}
+textarea{resize:vertical;min-height:96px}
+textarea:focus,input:focus{outline:none;border-color:var(--safety);box-shadow:0 0 0 3px rgba(240,180,41,.15)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:11px 22px;
+  font:inherit;font-weight:600;cursor:pointer;transition:background .15s}
+button:hover{background:#000}
+button:disabled{opacity:.55;cursor:default}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f5f3ee}
+.actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.hint{font-size:12px;color:var(--muted)}
+.hidden{display:none!important}
+.muted{color:var(--muted);font-size:13px}
+/* 结果卡 */
+.result-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ticket-no{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:26px;font-weight:700;letter-spacing:.5px}
+.ticket-no.small{font-size:17px}
+.badge{font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
+.badge-ai{background:#eef6f0;color:var(--ok);border-color:#c4ddcb}
+.badge-rule{background:#f6f1e4;color:#8a6d1f;border-color:#e6d9b5}
+.badges{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
+.chip{font-size:13px;padding:4px 12px;border-radius:4px;background:#f2f1ec;border:1px solid var(--line)}
+.pri-high{background:#fbeeec;color:var(--danger);border-color:#eccfc9}
+.pri-mid{background:#f6f1e4;color:#8a6d1f;border-color:#e6d9b5}
+.pri-low{background:#eef6f0;color:var(--ok);border-color:#c4ddcb}
+.summary{margin:12px 0 0;font-size:15px}
+.checks{counter-reset:step;list-style:none;padding:0;margin:10px 0 0}
+.checks li{counter-increment:step;position:relative;padding-left:34px;margin:10px 0;font-size:14px}
+.checks li::before{content:counter(step);position:absolute;left:0;top:1px;width:22px;height:22px;
+  border-radius:50%;background:var(--safety);color:#1b1e23;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.counter{text-align:right;font-size:12px;color:var(--muted);margin-top:4px}
+.counter.warn{color:var(--danger)}
+.copy-btn{background:#f2f1ec;border:1px solid var(--line);color:var(--ink);font-size:12px;
+  padding:4px 10px;border-radius:4px;cursor:pointer;margin-left:8px;vertical-align:middle}
+.copy-btn:hover{background:#eae8e0}
+.result-ok{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ok);
+  background:#eef6f0;border:1px solid #c4ddcb;border-radius:6px;padding:8px 12px;margin-bottom:12px}
+.result-ok b{font-weight:600}
+.toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:100;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:#1b1e23;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);opacity:0;transform:translateY(8px);transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--danger)}
+.card.in{animation:cardIn .28s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.card.in{animation:none}}
+.dup{background:#fdf8ec;border:1px solid #e6d9b5;border-radius:6px;padding:12px;margin-top:16px}
+.dup p{margin:0 0 10px}
+.asset-banner{background:#eef6f0;border:1px solid #c4ddcb;color:var(--ok);
+  border-radius:6px;padding:9px 12px;font-size:13px;margin-bottom:12px}
+.similar{background:#f7f5ef;border:1px solid var(--line);border-radius:6px;
+  padding:10px 12px;margin-top:10px;font-size:13px}
+.similar h4{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:600}
+.similar-item{padding:7px 0;border-top:1px dashed var(--line)}
+.similar-item:first-of-type{border-top:0}
+.similar-item b{font-family:ui-monospace,Consolas,monospace}
+.similar-item a{color:var(--blue);font-size:12px}
+/* 查询 */
+.q-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.timeline{list-style:none;padding:0;margin:8px 0 0}
+.timeline li{padding:8px 0 8px 18px;border-left:2px solid var(--line);position:relative;font-size:14px}
+.timeline li::before{content:"";position:absolute;left:-5px;top:14px;width:8px;height:8px;
+  border-radius:50%;background:var(--safety)}
+.timeline .t{font-family:ui-monospace,Consolas,monospace;color:var(--muted);margin-right:10px;font-size:13px}
+.foot{color:var(--muted);font-size:12px;padding:18px 16px 34px;text-align:center}
+@media (max-width:640px){
+  .row{grid-template-columns:1fr}
+  .card{padding:16px;margin:12px 0}
+  .ticket-no{font-size:22px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div>
+      <div class="brand"><i></i>校园报修 · 智能分诊</div>
+      <div class="sub">一句话说清问题 · 自动分类定级 · 进度随时可查</div>
+    </div>
+    <div style="display:flex;gap:14px;font-size:13px;padding-top:4px;white-space:nowrap">
+      <a href="/" style="color:#f0b429;text-decoration:none">← 工作台</a>
+      <a href="/field/" style="color:#b9bcc2;text-decoration:none">现场排障</a>
+      <a href="/repair/admin" style="color:#b9bcc2;text-decoration:none">管理端</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card" id="formCard">
+    <h2>提交报修</h2>
+    <div id="assetBanner" class="asset-banner hidden"></div>
+    <form id="form">
+      <label>问题描述 <span class="req">必填</span></label>
+      <textarea id="description" maxlength="500" rows="4"
+        placeholder="例如：3号楼502宿舍网断了，路由器指示灯不亮，手机连 WiFi 也上不了"></textarea>
+      <div class="counter"><span id="charCount">0</span> / 500</div>
+      <div class="similar hidden" id="similarBox"></div>
+      <div class="row">
+        <div>
+          <label>地点（楼栋 / 房间）</label>
+          <input id="location" maxlength="60" placeholder="例如：3号楼502">
+        </div>
+        <div>
+          <label>姓名（选填）</label>
+          <input id="reporter" maxlength="20" placeholder="选填">
+        </div>
+      </div>
+      <label>联系方式（选填，方便维修师傅联系）</label>
+      <input id="contact" maxlength="30" placeholder="手机号 / 微信（选填）">
+      <div class="actions">
+        <button type="submit" id="submitBtn">提交报修</button>
+        <span class="hint" id="aiHint"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card hidden" id="resultCard">
+    <div class="result-ok" id="resultOk"><b>✓ 分诊完成</b><span id="resOkText">已生成工单，维修人员会尽快处理</span></div>
+    <div class="result-head">
+      <div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap">
+          <div class="ticket-no" id="resNo"></div>
+          <button class="copy-btn hidden" id="copyNo">复制工单号</button>
+        </div>
+        <div class="muted" id="resTime"></div>
+      </div>
+      <span class="badge" id="resMode"></span>
+    </div>
+    <div class="badges">
+      <span class="chip" id="resCat"></span>
+      <span class="chip" id="resPri"></span>
+      <span class="chip" id="resConf"></span>
+      <span class="chip hidden" id="resTokens"></span>
+    </div>
+    <p class="summary" id="resSummary"></p>
+    <h3>先试试这些（可能不用等维修）</h3>
+    <ul class="checks" id="resChecks"></ul>
+    <div class="dup hidden" id="dupBox">
+      <p id="dupText"></p>
+      <button id="forceBtn" class="ghost">仍要提交新工单</button>
+    </div>
+    <div class="actions">
+      <button class="ghost" id="againBtn">再报一单</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>查询进度</h2>
+    <div class="row">
+      <input id="queryNo" placeholder="输入工单号，如 BX20261027001">
+      <button id="queryBtn" style="align-self:end">查询</button>
+    </div>
+    <div id="queryResult" class="hidden"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  本系统仅用于校园报修处理：姓名、联系方式为选填，仅用于本次维修联系；演示环境数据均为虚构。
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = {pending:'待处理', processing:'处理中', done:'已完成', closed:'已关闭', '':''};
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+async function api(url, opts){
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    throw new Error('本地服务未响应：请确认软件仍在运行，必要时重新双击打开');
+  }
+  let data = {};
+  try { data = await res.json(); } catch(e) { data = {error:'响应解析失败'}; }
+  if (!res.ok) throw new Error(data.error || ('请求失败 ' + res.status));
+  return data;
+}
+
+function toast(msg, type){
+  let wrap = document.getElementById('toastWrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'toastWrap';
+    wrap.className = 'toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 2600);
+}
+
+// 描述字数计数
+const descEl = $('description');
+let similarTimer = null;
+descEl.addEventListener('input', () => {
+  const n = descEl.value.length;
+  $('charCount').textContent = n;
+  $('charCount').parentElement.classList.toggle('warn', n > 460);
+  descEl.style.borderColor = '';
+  clearTimeout(similarTimer);
+  const q = descEl.value.trim();
+  if (q.length < 4) { $('similarBox').classList.add('hidden'); return; }
+  similarTimer = setTimeout(() => loadSimilar(q), 350);
+});
+
+async function loadSimilar(q){
+  try {
+    const d = await api('api/similar?q=' + encodeURIComponent(q));
+    const items = d.items || [];
+    const box = $('similarBox');
+    if (!items.length) { box.classList.add('hidden'); return; }
+    box.innerHTML = '<h4>历史相似工单（已解决）</h4>' + items.slice(0, 3).map(it =>
+      '<div class="similar-item"><b>' + esc(it.ticket_no) + '</b> · ' +
+      esc(it.category) + ' · ' + esc(it.status_label) +
+      '<div>' + esc(it.description) + '</div>' +
+      (it.resolution ? '<div class="muted">处理：' + esc(it.resolution) + '</div>' : '') +
+      '<a href="/repair/admin?ticket=' + encodeURIComponent(it.ticket_no) + '">查看工单</a></div>'
+    ).join('');
+    box.classList.remove('hidden');
+  } catch (e) {
+    $('similarBox').classList.add('hidden');
+  }
+}
+
+// 复制工单号
+let lastTicketNo = '';
+$('copyNo').addEventListener('click', async () => {
+  if (!lastTicketNo) return;
+  try {
+    await navigator.clipboard.writeText(lastTicketNo);
+    toast('工单号已复制：' + lastTicketNo, 'ok');
+  } catch (e) {
+    toast('复制失败，请手动记录：' + lastTicketNo, 'err');
+  }
+});
+
+api('api/health').then(h => {
+  $('aiHint').textContent = h.ai_enabled ? '· AI 分诊已开启' : '· 当前为规则分诊（未配置 AI Key）';
+}).catch(() => {});
+
+let pendingPayload = null;
+
+// 扫码进入：/repair/?asset=CODE 自动带设备与位置；问答页「转报修」用 ?desc= 预填
+const params = new URLSearchParams(location.search);
+const descParam = params.get('desc');
+if (descParam) {
+  $('description').value = descParam.slice(0, 500);
+  $('charCount').textContent = $('description').value.length;
+}
+const assetCode = params.get('asset');
+let linkedAsset = null;
+if (assetCode) {
+  api('api/assets/by-code/' + encodeURIComponent(assetCode)).then(d => {
+    linkedAsset = d.asset;
+    const b = $('assetBanner');
+    b.classList.remove('hidden');
+    b.textContent = '正在为设备报修：' + d.asset.name + '（' + d.asset.code + '）' +
+      (d.asset.location ? ' · ' + d.asset.location : '');
+    if (d.asset.location) $('location').value = d.asset.location;
+  }).catch(() => {});
+}
+
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const payload = {
+    description: $('description').value.trim(),
+    location: $('location').value.trim(),
+    reporter: $('reporter').value.trim(),
+    contact: $('contact').value.trim(),
+    asset_code: linkedAsset ? linkedAsset.code : '',
+  };
+  if (!payload.description) {
+    descEl.focus();
+    descEl.style.borderColor = 'var(--danger)';
+    toast('请先描述问题（一句话说清现象和位置即可）', 'err');
+    return;
+  }
+  $('submitBtn').disabled = true;
+  $('submitBtn').textContent = '分诊中…';
+  try {
+    const data = await api('api/tickets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (data.duplicate) {
+      pendingPayload = payload;
+      $('dupText').textContent =
+        '同地点同类问题已有处理中的工单 ' + data.duplicate.ticket_no +
+        '（' + data.duplicate.status_label + '，' + data.duplicate.created_at +
+        '）。如果问题相同，请等待处理；确属新问题可继续提交。';
+      showResult(data.triage, '', true);
+    } else {
+      showResult(data.triage, data.ticket_no, false);
+    }
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    $('submitBtn').disabled = false;
+    $('submitBtn').textContent = '提交报修';
+  }
+});
+
+$('forceBtn').addEventListener('click', async () => {
+  if (!pendingPayload) return;
+  $('forceBtn').disabled = true;
+  try {
+    const data = await api('api/tickets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(Object.assign({}, pendingPayload, {force: true}))
+    });
+    showResult(data.triage, data.ticket_no, false);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    $('forceBtn').disabled = false;
+  }
+});
+
+$('againBtn').addEventListener('click', () => {
+  $('resultCard').classList.add('hidden');
+  $('description').value = '';
+  $('description').focus();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+});
+
+function showResult(t, ticketNo, isDup) {
+  $('resultCard').classList.remove('hidden');
+  $('resultCard').classList.remove('in');
+  void $('resultCard').offsetWidth;
+  $('resultCard').classList.add('in');
+  $('dupBox').classList.toggle('hidden', !isDup);
+  $('resultOk').style.display = isDup ? 'none' : '';
+  lastTicketNo = ticketNo || '';
+  $('copyNo').classList.toggle('hidden', !ticketNo);
+  if (ticketNo) {
+    $('resOkText').textContent = '工单 ' + ticketNo + ' 已生成，维修人员会尽快处理';
+    $('resNo').textContent = ticketNo;
+    $('resNo').classList.remove('small');
+    $('resTime').textContent = '提交时间 ' + new Date().toLocaleString('zh-CN');
+  } else {
+    $('resNo').textContent = '检测到重复报修';
+    $('resNo').classList.add('small');
+    $('resTime').textContent = '';
+  }
+  $('resMode').textContent = t.ai_mode === 'ai' ? 'AI 分诊' : '规则分诊';
+  $('resMode').className = 'badge ' + (t.ai_mode === 'ai' ? 'badge-ai' : 'badge-rule');
+  $('resCat').textContent = '类别：' + t.category;
+  $('resPri').textContent = '优先级：' + t.priority;
+  $('resPri').className = 'chip ' +
+    (t.priority === '高' ? 'pri-high' : t.priority === '中' ? 'pri-mid' : 'pri-low');
+  $('resConf').textContent = '置信度 ' + Math.round(t.confidence * 100) + '%';
+  const u = t.usage || {};
+  if (t.ai_mode === 'ai' && u.total_tokens) {
+    $('resTokens').classList.remove('hidden');
+    $('resTokens').textContent = '本次 ' + u.total_tokens + ' tokens（输入 ' + u.prompt_tokens +
+      ' / 输出 ' + u.completion_tokens + '）· ' + (t.ai_ms || 0) + 'ms';
+  } else {
+    $('resTokens').classList.add('hidden');
+  }
+  $('resSummary').textContent = t.summary || '';
+  $('resChecks').innerHTML = (t.checks || []).map(c => '<li>' + esc(c) + '</li>').join('');
+  $('resultCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+async function query() {
+  const no = $('queryNo').value.trim().toUpperCase();
+  if (!no) { toast('请输入工单号', 'err'); return; }
+  try {
+    const data = await api('api/tickets/' + encodeURIComponent(no));
+    const t = data.ticket, events = data.events || [];
+    $('queryResult').classList.remove('hidden');
+    $('queryResult').innerHTML =
+      '<div class="q-head"><strong>' + esc(t.ticket_no) + '</strong>' +
+      '<span class="chip">' + esc(t.status_label) + '</span></div>' +
+      '<p class="muted">' + esc(t.category) + ' · ' + esc(t.priority) + '优先级 · ' +
+      esc(t.location || '未填地点') + ' · 提交于 ' + esc(t.created_at) + '</p>' +
+      '<p>' + esc(t.description) + '</p>' +
+      '<h3>处理记录</h3>' +
+      '<ul class="timeline">' + events.map(e =>
+        '<li><span class="t">' + esc(e.created_at.slice(5, 16)) + '</span>' +
+        esc(SL[e.to_status] || e.to_status) +
+        (e.note ? ' · ' + esc(e.note) : '') + '</li>').join('') + '</ul>';
+  } catch (err) {
+    $('queryResult').classList.remove('hidden');
+    $('queryResult').innerHTML = '<p class="muted">' + esc(err.message) + '</p>';
+  }
+}
+$('queryBtn').addEventListener('click', query);
+$('queryNo').addEventListener('keydown', e => { if (e.key === 'Enter') query(); });
+
+// 桌面版心跳（浏览器访问时无副作用）
+setInterval(() => { fetch('api/ping').catch(() => {}); }, 5000);
+
+// 演示参数：?demo=1 自动填入示例并提交（截图/演示用）
+if (new URLSearchParams(location.search).get('demo') === '1') {
+  descEl.value = '3号楼502宿舍网断了，路由器指示灯不亮，手机也连不上WiFi（演示）';
+  descEl.dispatchEvent(new Event('input'));
+  setTimeout(() => $('form').requestSubmit(), 500);
+}
+</script>
+</body>
+</html>

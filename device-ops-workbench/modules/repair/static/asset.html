@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1e23">
+<title>设备档案 · 设备运维工作台</title>
+<style>
+:root{--paper:#f2f1ec;--card:#fffef9;--ink:#1b1e23;--muted:#6b6f76;
+  --line:#d9d6cc;--safety:#f0b429;--ok:#2c6b4c;--danger:#a5342b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+.top{background:#1b1e23;color:#fff;padding:18px 0}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand{font-size:18px;font-weight:700}
+.top a{color:#f0b429;text-decoration:none;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;margin:14px 0}
+h1{font-size:22px;margin:0 0 4px}
+.code{font-family:ui-monospace,Consolas,monospace;color:var(--muted);font-size:13px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.chip{font-size:12px;padding:3px 10px;border-radius:4px;background:#f2f1ec;border:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:88px 1fr;gap:8px 12px;font-size:14px;margin-top:8px}
+.grid .k{color:var(--muted)}
+h2{font-size:15px;margin:0 0 10px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+.item{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.item:last-child{border-bottom:none}
+.item .no{font-family:ui-monospace,Consolas,monospace;font-weight:700}
+.item .m{color:var(--muted);font-size:12px;margin-top:2px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn{display:inline-block;background:var(--ink);color:#fff;border-radius:6px;padding:10px 18px;
+  text-decoration:none;font-weight:600;font-size:14px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+.foot{color:var(--muted);font-size:12px;text-align:center;padding:12px 16px 30px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">设备档案</div>
+    <a href="/">← 返回工作台</a>
+  </div>
+</header>
+<main class="wrap">
+  <section class="card" id="mainCard">
+    <div id="loading" class="empty">加载中…</div>
+    <div id="content" style="display:none">
+      <h1 id="aName"></h1>
+      <div class="code" id="aCode"></div>
+      <div class="badges" id="aBadges"></div>
+      <div class="grid" id="aGrid"></div>
+      <div class="actions">
+        <a class="btn" id="reportBtn" href="#">报修这台设备</a>
+        <a class="btn ghost" href="/repair/">报修入口</a>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>历史工单</h2>
+    <div id="tickets"><div class="empty">加载中…</div></div>
+  </section>
+</main>
+<div class="foot">设备档案二维码 · 设备运维智能工作台</div>
+<script>
+const $ = id => document.getElementById(id);
+const code = decodeURIComponent(location.pathname.split('/').pop() || '');
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+async function api(url){
+  const res = await fetch(url);
+  let data = {};
+  try { data = await res.json(); } catch(e) { data = {error:'响应解析失败'}; }
+  if (!res.ok) throw new Error(data.error || ('请求失败 ' + res.status));
+  return data;
+}
+
+function render(data){
+  const a = data.asset;
+  $('aName').textContent = a.name;
+  $('aCode').textContent = '编号 ' + a.code;
+  $('aBadges').innerHTML =
+    '<span class="chip">' + esc(a.category || '其他') + '</span>' +
+    '<span class="chip">' + esc(a.status || '在用') + '</span>' +
+    (a.warranty_until ? '<span class="chip">保修至 ' + esc(a.warranty_until) + '</span>' : '');
+  const rows = [
+    ['位置', a.location], ['负责人', a.owner], ['供应商', a.vendor],
+    ['手册', a.manual], ['备注', a.note]
+  ].filter(r => r[1]);
+  $('aGrid').innerHTML = rows.map(r =>
+    '<div class="k">' + esc(r[0]) + '</div><div>' + esc(r[1]) + '</div>').join('');
+  $('reportBtn').href = '/repair/?asset=' + encodeURIComponent(a.code);
+  $('content').style.display = '';
+  $('loading').style.display = 'none';
+
+  const list = data.tickets || [];
+  if (!list.length) {
+    $('tickets').innerHTML = '<div class="empty">暂无历史工单</div>';
+  } else {
+    $('tickets').innerHTML = list.map(t =>
+      '<div class="item"><span class="no">' + esc(t.ticket_no) + '</span> · ' +
+      esc(t.status_label) + '<div>' + esc((t.description || '').slice(0, 80)) + '</div>' +
+      '<div class="m">' + esc(t.created_at) + ' · ' + esc(t.category) + ' · ' + esc(t.priority) + '</div></div>'
+    ).join('');
+  }
+}
+
+api('/repair/api/assets/by-code/' + encodeURIComponent(code)).then(render).catch(e => {
+  $('loading').textContent = e.message;
+});
+</script>
+</body>
+</html>

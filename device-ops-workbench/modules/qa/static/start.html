@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1e23">
+<title>开始使用 · 设备运维智能工作台</title>
+<style>
+:root{--paper:#f2f1ec;--card:#fffef9;--ink:#1b1e23;--muted:#6b6f76;
+  --line:#d9d6cc;--safety:#f0b429;--ok:#2c6b4c;--blue:#2f4f6f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:0 18px}
+.top{background:#1b1e23;color:#fff;padding:26px 0}
+.top .wrap{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:700;display:flex;align-items:center;gap:9px}
+.brand i{width:9px;height:9px;background:var(--safety);border-radius:2px}
+.sub{color:#b9bcc2;font-size:13px;margin-top:3px}
+.top a{color:#f0b429;text-decoration:none;font-size:13px;padding-top:5px}
+h1{font-size:24px;margin:26px 0 6px}
+.lead{color:var(--muted);font-size:14px;margin:0 0 18px}
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.role{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);display:flex;flex-direction:column}
+.role h2{font-size:16px;margin:0 0 2px;padding-bottom:10px;border-bottom:2px solid var(--ink)}
+.role .who{font-size:12px;color:var(--muted);margin:4px 0 10px}
+.role a{display:block;padding:9px 11px;border-radius:7px;color:var(--ink);text-decoration:none;
+  font-size:14px;border:1px solid transparent}
+.role a:hover{background:#f6f3ea;border-color:var(--line)}
+.role a b{font-weight:600}
+.role a span{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.role .primary{background:var(--ink);color:#fff;text-align:center;font-weight:600;margin-top:8px}
+.role .primary span{color:#b9bcc2}
+.role .primary:hover{background:#000}
+.tip{background:#fdf8ec;border:1px solid #e6d9b5;border-radius:8px;padding:14px 16px;
+  margin:18px 0;font-size:13px;color:#6b5a24}
+.tip b{color:#4c3d11}
+.foot{color:var(--muted);font-size:12px;text-align:center;padding:20px 16px 34px}
+@media (max-width:760px){.roles{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <div class="brand"><i></i>设备运维智能工作台</div>
+      <div class="sub">知识问答 · 报修工单 · 现场排障，一个入口</div>
+    </div>
+    <a href="/">直接进入知识问答 →</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>你是哪种角色？</h1>
+  <p class="lead">选一个入口开始；三种角色只是快捷方式，功能都能互相跳转。</p>
+
+  <div class="roles">
+    <section class="role">
+      <h2>报修人</h2>
+      <div class="who">学生 / 老师 / 宿舍管理员</div>
+      <a href="/repair/"><b>我要报修</b><span>一句话描述，AI 分诊并给自查步骤</span></a>
+      <a href="/repair/#query"><b>查工单进度</b><span>输入工单号看处理到哪一步</span></a>
+      <a href="/"><b>先问问知识库</b><span>能自己解决就不用工单</span></a>
+      <a class="primary" href="/repair/">开始报修</a>
+    </section>
+
+    <section class="role">
+      <h2>维修工</h2>
+      <div class="who">弱电 / 网络 / 设备维护</div>
+      <a href="/repair/admin"><b>待处理工单</b><span>接单、流转、记录处理过程</span></a>
+      <a href="/field/"><b>现场排障助手</b><span>23 个场景、141 步，手机离线可用</span></a>
+      <a href="/start#assets"><b>设备台账</b><span>扫码看档案、保修与历史故障</span></a>
+      <a class="primary" href="/repair/admin">打开工单管理</a>
+    </section>
+
+    <section class="role">
+      <h2>管理员</h2>
+      <div class="who">信息中心 / 运维负责人</div>
+      <a href="/"><b>知识问答与知识库</b><span>检索质量、文档维护、来源核对</span></a>
+      <a href="/repair/admin"><b>工单与统计</b><span>分类分布、平均处理时长、AI 用量</span></a>
+      <a href="/#models"><b>模型设置</b><span>统一供应商 / Key / 思考等级</span></a>
+      <a class="primary" href="/">进入工作台</a>
+    </section>
+  </div>
+
+  <div class="tip">
+    <b>第一次使用？</b> 不用配置也能跑：不填 API Key 时，问答返回知识库原文，报修使用规则分诊。
+    想体验 AI 回答，到「模型设置」填一个供应商 Key 即可；问答和报修共用同一套模型。
+  </div>
+</main>
+
+<footer class="foot">本地运行 · 数据不出本机 · 演示数据均为虚构</footer>
+</body>
+</html>

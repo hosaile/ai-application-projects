@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1e23">
+<title>校园报修 · 工单管理台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231b1e23'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%23f0b429'/%3E%3Ctext x='36' y='46' font-size='30' fill='%23fff' text-anchor='middle' font-family='sans-serif' font-weight='bold'%3E%E6%8A%A5%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f2f1ec; --card:#fffef9; --ink:#1b1e23; --muted:#6b6f76;
+  --line:#d9d6cc; --safety:#f0b429; --danger:#a5342b; --ok:#2c6b4c; --blue:#2f4f6f;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+.top{background:#1b1e23;color:#fff;padding:18px 0}
+.top .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:9px;height:9px;background:var(--safety);border-radius:2px}
+.top a{color:#b9bcc2;font-size:13px;text-decoration:none;border-bottom:1px dashed #555}
+.top a:hover{color:#fff}
+.ai-state{font-size:12px;color:#b9bcc2;margin-left:10px}
+h2{font-size:15px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;margin:16px 0;
+  box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:26px;font-weight:700;margin-top:2px}
+.stat .v small{font-size:13px;font-weight:400;color:var(--muted)}
+.bars{margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metric{background:#f7f5ef;border:1px solid var(--line);border-radius:7px;padding:11px 12px}
+.metric .k{font-size:12px;color:var(--muted)}
+.metric .v{font-size:22px;font-weight:700;margin-top:2px}
+.metric .v small{font-size:11px;font-weight:400;color:var(--muted)}
+.metric .s{font-size:11px;color:var(--muted);margin-top:2px}
+.bar-row{display:grid;grid-template-columns:52px 1fr 34px;align-items:center;gap:8px;margin:7px 0;font-size:13px}
+.bar{height:10px;background:#ecebe4;border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--safety);border-radius:3px}
+.bar-row .c{text-align:right;color:var(--muted)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.filters label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+select,input,textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:9px 10px;
+  font:inherit;background:#fff;color:var(--ink);-webkit-appearance:none}
+textarea{resize:vertical;line-height:1.55}
+select:focus,input:focus{outline:none;border-color:var(--safety);box-shadow:0 0 0 3px rgba(240,180,41,.15)}
+button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:9px 16px;
+  font:inherit;font-weight:600;cursor:pointer}
+button:hover{background:#000}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f5f3ee}
+button.on{background:var(--ink);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.trow{border-bottom:1px solid var(--line);padding:13px 4px 13px 14px;cursor:pointer;position:relative;
+  transition:background .15s}
+.trow::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;
+  border-radius:2px;background:transparent}
+.trow.pri-high::before{background:var(--danger)}
+.trow.pri-mid::before{background:var(--safety)}
+.trow.pri-low::before{background:var(--ok)}
+.trow:last-child{border-bottom:none}
+.trow:hover{background:#f7f5ef}
+.t-line1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.t-no{font-family:ui-monospace,Consolas,monospace;font-weight:700;font-size:15px}
+.t-desc{margin:4px 0 3px;font-size:14px}
+.t-meta{font-size:12px;color:var(--muted)}
+.chip{font-size:12px;padding:2px 9px;border-radius:4px;background:#f2f1ec;border:1px solid var(--line);white-space:nowrap}
+.st-pending{background:#f6f1e4;color:#8a6d1f;border-color:#e6d9b5}
+.st-processing{background:#eaf1f7;color:var(--blue);border-color:#cfe0ee}
+.st-done{background:#eef6f0;color:var(--ok);border-color:#c4ddcb}
+.st-closed{background:#f0f0f0;color:#666;border-color:#ddd}
+.pri-high{background:#fbeeec;color:var(--danger);border-color:#eccfc9}
+.lowconf{color:#8a6d1f;border:1px dashed #d9b96a;background:#fdf8ec}
+.empty{color:var(--muted);text-align:center;padding:36px 0;font-size:14px}
+.empty svg{display:block;margin:0 auto 8px}
+.skel{padding:14px 0;border-bottom:1px solid var(--line)}
+.skel i{display:block;height:12px;border-radius:4px;background:#ecebe4;margin:7px 0;
+  animation:pulse 1.2s ease-in-out infinite}
+.skel i:nth-child(2){width:68%}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:100;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:#1b1e23;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);opacity:0;transform:translateY(8px);transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:var(--ok)}
+.toast.err{background:var(--danger)}
+/* 详情抽屉 */
+.mask{position:fixed;inset:0;background:rgba(20,22,26,.3);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+.mask.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:560px;max-width:100%;background:var(--card);
+  border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(0,0,0,.14);
+  transform:translateX(102%);transition:transform .22s ease;z-index:50;overflow-y:auto}
+.drawer.open{transform:translateX(0)}
+.drawer-in{padding:20px}
+.d-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.d-no{font-family:ui-monospace,Consolas,monospace;font-size:22px;font-weight:700}
+.x{background:transparent;color:var(--muted);border:none;font-size:22px;line-height:1;padding:4px 8px;cursor:pointer}
+.d-meta{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.d-block{margin:14px 0}
+.d-block .k{font-size:12px;color:var(--muted);margin-bottom:3px}
+.d-desc{background:#f7f5ef;border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px}
+.checks{padding-left:20px;margin:6px 0 0;font-size:14px}
+.checks li{margin:4px 0}
+.ops{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.op-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px}
+.op-row2{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:10px}
+.timeline{list-style:none;padding:0;margin:6px 0 0}
+.timeline li{padding:7px 0 7px 16px;border-left:2px solid var(--line);position:relative;font-size:13px}
+.timeline li::before{content:"";position:absolute;left:-5px;top:13px;width:8px;height:8px;border-radius:50%;background:var(--safety)}
+.timeline .t{font-family:ui-monospace,Consolas,monospace;color:var(--muted);margin-right:8px}
+/* AI 设置弹窗 */
+.btn-top{background:transparent;border:1px solid #4a505a;color:#e8e8e8;padding:6px 12px;font-size:13px;border-radius:6px;cursor:pointer}
+.btn-top:hover{background:#2a2f36}
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-mask{position:absolute;inset:0;background:rgba(20,22,26,.45)}
+.modal-box{position:relative;background:var(--card);border:1px solid var(--line);border-radius:10px;
+  width:540px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-in{padding:22px}
+.modal-in h3{margin:0;font-size:17px;padding:0;border:none}
+.hint-line{font-size:12px;color:var(--muted);line-height:1.5}
+.field{margin:12px 0}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.actions-row{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;align-items:center}
+.test-result{margin-top:12px;font-size:13px;padding:9px 11px;border-radius:6px;display:none;word-break:break-all}
+.test-ok{display:block;background:#eef6f0;color:var(--ok);border:1px solid #c4ddcb}
+.test-fail{display:block;background:#fbeeec;color:var(--danger);border:1px solid #eccfc9}
+.spacer{flex:1}
+button.danger{color:var(--danger);border-color:#e0b8b2;background:transparent}
+.demo-banner{display:none;background:#fdf8ec;border-bottom:1px solid #e6d9b5;color:#6b5a24;
+  font-size:13px;padding:8px 16px;text-align:center}
+.demo-banner.show{display:block}
+.demo-banner button{background:transparent;border:1px solid #d9b96a;color:#6b5a24;
+  font-size:12px;padding:3px 10px;border-radius:5px;margin-left:8px}
+button.danger:hover{background:#fbeeec}
+@media (max-width:720px){
+  .stats{grid-template-columns:1fr 1fr}
+  .op-row2{grid-template-columns:1fr 1fr}
+  .op-row2 button{grid-column:1 / -1}
+}
+@media (max-width:480px){
+  .stats{grid-template-columns:1fr}
+  .filters>*{flex:1 1 45%}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div style="display:flex;align-items:center">
+      <div class="brand"><i></i>校园报修 · 工单管理台</div>
+      <span class="ai-state" id="aiState"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <a href="/">← 工作台</a>
+      <a href="/repair/">学生报修端</a>
+      <a href="/field/">现场排障</a>
+      <a href="/repair/logout">退出</a>
+      <button class="btn-top" id="demoBtn">演示模式</button>
+      <button class="btn-top" id="settingsBtn">⚙ 模型与数据</button>
+    </div>
+  </div>
+</header>
+<div class="demo-banner" id="demoBanner">
+  <b>演示模式</b>：当前使用独立演示数据库，不会影响真实工单。
+  <button id="demoExitBtn">退出演示</button>
+</div>
+
+<main class="wrap">
+  <div class="stats">
+    <div class="stat"><div class="k">今日新增</div><div class="v" id="sToday">–</div></div>
+    <div class="stat"><div class="k">待处理 / 处理中</div><div class="v" id="sPending">–</div></div>
+    <div class="stat"><div class="k">平均处理时长</div><div class="v" id="sAvg">–<small> 小时</small></div></div>
+    <div class="stat"><div class="k">已超时</div><div class="v" id="sOverdue">–</div></div>
+  </div>
+
+  <section class="card">
+    <h2>近 7 天分类分布</h2>
+    <div class="bars" id="bars"></div>
+  </section>
+
+
+  <section class="card" id="assets">
+    <h2>设备资产</h2>
+    <div class="filters" style="margin-bottom:14px">
+      <div style="flex:1;min-width:180px">
+        <label>搜索</label>
+        <input id="assetSearch" placeholder="编号 / 名称 / 位置 / 负责人">
+      </div>
+      <button id="assetAddBtn">+ 新增设备</button>
+      <button class="ghost" id="assetImportBtn">导入 CSV</button>
+      <input type="file" id="assetFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div class="hint-line" style="margin-bottom:8px">
+      一物一码：保存后可下载二维码，贴在设备上；扫码打开档案并支持一键报修。
+    </div>
+    <div id="assetList"><div class="empty">加载中…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>运营指标（近 30 天）</h2>
+    <div class="metrics" id="metrics"><div class="empty">加载中…</div></div>
+    <div class="hint-line" style="margin-top:9px">
+      用真实工单验证价值：AI 分诊占比、SLA 按时完成率、重复报修率、已沉淀经验文档。
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>工单列表</h2>
+    <div class="filters" style="margin-bottom:14px">
+      <div style="flex:1;min-width:120px">
+        <label>状态</label>
+        <select id="fStatus">
+          <option value="">全部</option>
+          <option value="pending">待处理</option>
+          <option value="processing">处理中</option>
+          <option value="done">已完成</option>
+          <option value="closed">已关闭</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:110px">
+        <label>类别</label>
+        <select id="fCategory">
+          <option value="">全部</option>
+          <option>网络</option><option>水电</option><option>门锁</option><option>设备</option><option>其他</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label>优先级</label>
+        <select id="fPriority">
+          <option value="">全部</option>
+          <option>高</option><option>中</option><option>低</option>
+        </select>
+      </div>
+      <button class="ghost" id="refreshBtn">刷新</button>
+    </div>
+    <div id="list"><div class="empty">加载中…</div></div>
+  </section>
+</main>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer"><div class="drawer-in" id="drawerIn"></div></aside>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-mask" id="settingsMask"></div>
+  <div class="modal-box">
+    <div class="modal-in">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>模型与数据</h3>
+        <button class="x" id="closeSettings" aria-label="关闭">×</button>
+      </div>
+      <div class="hint-line" style="margin-top:6px">
+        模型由工作台统一配置，知识问答与报修分诊共用同一套供应商和 Key；此处不再单独保存 Key。
+      </div>
+      <div class="field">
+        <label>当前模型</label>
+        <div class="hint-line" id="unifiedModelInfo" style="white-space:pre-line">加载中…</div>
+      </div>
+      <div class="actions-row">
+        <a class="btn-top" href="/" style="text-decoration:none">打开工作台模型设置</a>
+        <button id="refreshModelBtn" class="ghost">刷新</button>
+      </div>
+      <div class="test-result" id="testResult"></div>
+
+      <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">
+        <h3 style="margin:0 0 8px;font-size:14px">数据与日志</h3>
+        <div class="hint-line" id="dataInfo" style="white-space:pre-line">加载中…</div>
+        <div class="actions-row" style="margin-top:10px">
+          <button id="backupBtn" class="ghost">下载数据库备份</button>
+          <button id="resetDataBtn" class="ghost danger">重置演示数据</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="assetModal">
+  <div class="modal-mask" id="assetMask"></div>
+  <div class="modal-box">
+    <div class="modal-in">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="assetModalTitle">新增设备</h3>
+        <button class="x" id="assetClose" aria-label="关闭">×</button>
+      </div>
+      <div class="field"><label>设备编号</label><input id="asCode" maxlength="40" placeholder="如 NET-AP-001"></div>
+      <div class="field"><label>设备名称</label><input id="asName" maxlength="80" placeholder="如 3号楼502 无线AP"></div>
+      <div class="field"><label>类别</label>
+        <select id="asCategory">
+          <option>网络设备</option><option>门禁设备</option><option>水电设备</option>
+          <option>办公设备</option><option>监控设备</option><option>其他</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>位置</label><input id="asLocation" maxlength="60"></div>
+        <div class="field"><label>负责人</label><input id="asOwner" maxlength="20"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>状态</label>
+          <select id="asStatus"><option>在用</option><option>维修中</option><option>闲置</option><option>报废</option></select>
+        </div>
+        <div class="field"><label>保修至</label><input id="asWarranty" maxlength="20" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="field"><label>供应商</label><input id="asVendor" maxlength="60"></div>
+      <div class="field"><label>手册 / 链接</label><input id="asManual" maxlength="120"></div>
+      <div class="field"><label>备注</label><input id="asNote" maxlength="300"></div>
+      <div class="test-result" id="assetMsg"></div>
+      <div class="actions-row">
+        <button id="assetSaveBtn">保存</button>
+        <span class="spacer"></span>
+        <button class="ghost danger" id="assetDeleteBtn">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="kcsModal">
+  <div class="modal-mask" id="kcsMask"></div>
+  <div class="modal-box" style="width:760px">
+    <div class="modal-in">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>沉淀为经验</h3>
+        <button class="x" id="kcsClose" aria-label="关闭">×</button>
+      </div>
+      <div class="hint-line">已自动脱敏手机号、身份证、邮箱、姓名和具体房间号；请审核/补充结论后再保存。</div>
+      <div class="field"><label>工单</label><div class="hint-line" id="kcsMeta"></div></div>
+      <div class="field"><label>Markdown 内容</label>
+        <textarea id="kcsContent" style="min-height:320px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px"></textarea>
+      </div>
+      <div class="test-result" id="kcsMsg"></div>
+      <div class="actions-row">
+        <button id="kcsSave">保存</button>
+        <button id="kcsSaveRebuild" class="ghost">保存并重建索引</button>
+        <span class="spacer"></span>
+        <a class="btn-top" id="kcsView" href="/#kb" target="_blank" style="display:none;text-decoration:none">查看知识库</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = {pending:'待处理', processing:'处理中', done:'已完成', closed:'已关闭'};
+const CATS = ['网络','水电','门锁','设备','其他'];
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+function toast(msg, type){
+  let wrap = document.getElementById('toastWrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'toastWrap';
+    wrap.className = 'toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 2600);
+}
+async function api(url, opts){
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    throw new Error('本地服务未响应：请确认软件仍在运行，必要时重新双击打开');
+  }
+  if (res.status === 401) {
+    location.href = '/repair/login?next=' + encodeURIComponent(location.pathname + location.search);
+    throw new Error('需要管理员登录');
+  }
+  let data = {};
+  try { data = await res.json(); } catch(e) { data = {error:'响应解析失败'}; }
+  if (!res.ok) throw new Error(data.error || ('请求失败 ' + res.status));
+  return data;
+}
+
+async function refreshHealth(){
+  try {
+    const h = await api('api/health');
+    $('aiState').textContent = h.ai_enabled
+      ? 'AI 分诊：已开启（' + h.model + '）'
+      : 'AI 分诊：规则模式';
+  } catch (e) {}
+}
+refreshHealth();
+
+let currentNo = null;
+
+let firstLoad = true;
+
+function skeleton(){
+  return '<div class="skel"><i></i><i></i></div>'.repeat(3);
+}
+
+const EMPTY_ICON = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" ' +
+  'stroke="#c9c5b8" stroke-width="1.2" stroke-linecap="round">' +
+  '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 12.5h5M8 16h3"/></svg>';
+
+async function load(){
+  const params = new URLSearchParams();
+  if ($('fStatus').value) params.set('status', $('fStatus').value);
+  if ($('fCategory').value) params.set('category', $('fCategory').value);
+  if ($('fPriority').value) params.set('priority', $('fPriority').value);
+  if (firstLoad) {
+    $('list').innerHTML = skeleton();
+    firstLoad = false;
+  }
+  try {
+    const [list, stats, metrics] = await Promise.all([
+      api('api/tickets?' + params.toString()),
+      api('api/stats'),
+      api('api/metrics')
+    ]);
+    renderList(list.tickets || []);
+    renderStats(stats);
+    renderMetrics(metrics);
+  } catch (err) {
+    $('list').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+  }
+}
+
+function renderStats(s){
+  $('sToday').textContent = s.today_new;
+  $('sPending').textContent = s.pending;
+  $('sAvg').innerHTML = (s.avg_hours == null ? '–' : s.avg_hours) + '<small> 小时</small>';
+  const by = s.by_category_7d || {};
+  const max = Math.max.apply(null, CATS.map(c => by[c] || 0).concat([1]));
+  $('bars').innerHTML = CATS.map(c => {
+    const n = by[c] || 0;
+    return '<div class="bar-row"><span>' + c + '</span>' +
+      '<div class="bar"><i style="width:' + Math.round(n / max * 100) + '%"></i></div>' +
+      '<span class="c">' + n + '</span></div>';
+  }).join('');
+  $('sOverdue').textContent = s.overdue != null ? s.overdue : '–';
+}
+
+
+function renderMetrics(m){
+  const pct = v => v == null ? '–' : Math.round(v * 100) + '%';
+  $('metrics').innerHTML =
+    '<div class="metric"><div class="k">AI 分诊占比</div><div class="v">' + pct(m.ai_rate) + '</div>' +
+      '<div class="s">共 ' + (m.last30 || 0) + ' 单</div></div>' +
+    '<div class="metric"><div class="k">SLA 按时完成率</div><div class="v">' + pct(m.sla_rate) + '</div>' +
+      '<div class="s">已完成工单</div></div>' +
+    '<div class="metric"><div class="k">重复报修率</div><div class="v">' + pct(m.repeat_rate) + '</div>' +
+      '<div class="s">越低越好</div></div>' +
+    '<div class="metric"><div class="k">经验文档</div><div class="v">' + (m.experience_docs || 0) + '</div>' +
+      '<div class="s">已沉淀到知识库</div></div>';
+}
+
+function renderList(rows){
+  if (!rows.length) {
+    $('list').innerHTML = '<div class="empty">' + EMPTY_ICON + '暂无工单</div>';
+    return;
+  }
+  $('list').innerHTML = rows.map(t => {
+    const conf = Math.round((t.confidence || 0) * 100);
+    const lowConf = t.ai_mode === 'ai' && (t.confidence || 0) < 0.75;
+    const priCls = t.priority === '高' ? 'pri-high' : t.priority === '低' ? 'pri-low' : 'pri-mid';
+    return '<div class="trow ' + priCls + '" data-no="' + esc(t.ticket_no) + '">' +
+      '<div class="t-line1">' +
+        '<span class="t-no">' + esc(t.ticket_no) + '</span>' +
+        '<span class="chip st-' + esc(t.status) + '">' + esc(t.status_label) + '</span>' +
+        '<span class="chip ' + (t.priority === '高' ? 'pri-high' : '') + '">' + esc(t.priority) + '优先级</span>' +
+        '<span class="chip">' + esc(t.category) + '</span>' +
+        (t.overdue ? '<span class="chip pri-high">已超时</span>' : '') +
+        (t.sla_breached ? '<span class="chip lowconf">完成超时</span>' : '') +
+        (t.ai_mode === 'ai'
+          ? '<span class="chip ' + (lowConf ? 'lowconf' : '') + '">AI ' + conf + '%' + (lowConf ? ' · 待确认' : '') + '</span>'
+          : '<span class="chip">规则</span>') +
+      '</div>' +
+      '<div class="t-desc">' + esc(t.description).slice(0, 60) + '</div>' +
+      '<div class="t-meta">' + esc(t.location || '未填地点') + ' · ' + esc(t.created_at) +
+        (t.assignee ? ' · 维修人 ' + esc(t.assignee) : '') + '</div>' +
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.trow'), el => {
+    el.addEventListener('click', () => openDetail(el.dataset.no));
+  });
+}
+
+async function openDetail(no){
+  currentNo = no;
+  try {
+    const data = await api('api/tickets/' + encodeURIComponent(no));
+    const t = data.ticket, ev = data.events || [];
+    const conf = Math.round((t.confidence || 0) * 100);
+    const stBtn = (val, label) =>
+      '<button data-act="status" data-status="' + val + '" ' +
+      (t.status === val ? 'class="on"' : 'class="ghost"') + '>' + label + '</button>';
+    $('drawerIn').innerHTML =
+      '<div class="d-head"><span class="d-no">' + esc(t.ticket_no) + '</span>' +
+        '<button class="x" id="closeDrawer" aria-label="关闭">×</button></div>' +
+      '<div class="d-meta">' +
+        '<span class="chip st-' + esc(t.status) + '">' + esc(t.status_label) + '</span>' +
+        '<span class="chip">' + esc(t.category) + '</span>' +
+        '<span class="chip ' + (t.priority === '高' ? 'pri-high' : '') + '">' + esc(t.priority) + '优先级</span>' +
+        '<span class="chip">' + (t.ai_mode === 'ai' ? 'AI 分诊 ' + conf + '%' : '规则分诊') + '</span>' +
+        (t.total_tokens ? '<span class="chip">' + t.total_tokens + ' tokens · ' + (t.ai_ms || 0) + 'ms</span>' : '') +
+      '</div>' +
+      '<div class="d-block"><div class="k">问题描述</div>' +
+        '<div class="d-desc">' + esc(t.description) + '</div></div>' +
+      (data.asset ? '<div class="d-block"><div class="k">关联设备</div>' +
+        '<div style="font-size:14px"><a href="/a/' + encodeURIComponent(data.asset.code) + '" ' +
+        'style="color:var(--blue)">' + esc(data.asset.name) + '（' + esc(data.asset.code) + '）</a>' +
+        ' · ' + esc(data.asset.location || '未填位置') +
+        ' · 保修至 ' + esc(data.asset.warranty_until || '未填') + '</div></div>' : '') +
+      (t.ai_sources && t.ai_sources.length ? '<div class="d-block"><div class="k">分诊依据（知识库）</div>' +
+        '<ul class="checks">' + t.ai_sources.map(s =>
+          '<li>《' + esc(s.source) + '》' + esc(s.heading) +
+          ' · 相似度 ' + esc(s.score) + '</li>').join('') + '</ul></div>' : '') +
+      '<div class="d-block"><div class="k">学生可先自查</div>' +
+        '<ul class="checks">' + (t.ai_checks || []).map(c => '<li>' + esc(c) + '</li>').join('') + '</ul></div>' +
+      '<div class="d-block"><div class="k">SLA 时限</div>' +
+        '<div style="font-size:14px">' + esc(t.sla_due_at || '未设置') +
+        (t.overdue ? ' · <b style="color:var(--danger)">已超时</b>' : '') +
+        (t.sla_breached ? ' · <b style="color:var(--danger)">完成时已超时</b>' : '') +
+        (t.first_response_at ? ' · 首次响应 ' + esc(t.first_response_at) : '') + '</div></div>' +
+      '<div class="d-block"><div class="k">报修信息</div>' +
+        '<div style="font-size:14px">地点：' + esc(t.location || '未填') +
+        ' · 姓名：' + esc(t.reporter || '未填') +
+        ' · 联系方式：' + esc(t.contact || '未填') + '</div></div>' +
+      '<div class="d-block"><div class="k">状态流转</div>' +
+        '<div class="ops">' + stBtn('processing', '开始处理') + stBtn('done', '完成') + stBtn('closed', '关闭') + '</div></div>' +
+      '<div class="d-block"><div class="k">人工调整类别（AI 误判时使用）</div>' +
+        '<div class="op-row">' +
+          '<select id="catSel">' + CATS.map(c =>
+            '<option ' + (c === t.category ? 'selected' : '') + '>' + c + '</option>').join('') + '</select>' +
+          '<button class="ghost" data-act="cat">保存类别</button>' +
+        '</div></div>' +
+      '<div class="d-block"><div class="k">指派与备注</div>' +
+        '<div class="op-row2">' +
+          '<input id="assigneeIn" placeholder="维修人" value="' + esc(t.assignee || '') + '">' +
+          '<input id="noteIn" placeholder="备注" value="' + esc(t.note || '') + '">' +
+          '<button class="ghost" data-act="save">保存</button>' +
+        '</div></div>' +
+      ((t.status === 'done' || t.status === 'closed') ?
+        '<div class="d-block"><div class="k">知识沉淀</div>' +
+        '<div class="ops"><button class="ghost" data-act="kcs">沉淀为经验</button></div></div>' : '') +
+      '<div class="d-block"><div class="k">处理记录</div>' +
+        '<ul class="timeline">' + ev.map(e =>
+          '<li><span class="t">' + esc(e.created_at.slice(5, 16)) + '</span>' +
+          esc(SL[e.to_status] || e.to_status || '提交') +
+          (e.note ? ' · ' + esc(e.note) : '') + '</li>').join('') + '</ul></div>';
+    $('drawer').classList.add('open');
+    $('mask').classList.add('open');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function closeDrawer(){
+  $('drawer').classList.remove('open');
+  $('mask').classList.remove('open');
+  currentNo = null;
+}
+
+$('mask').addEventListener('click', closeDrawer);
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'closeDrawer') closeDrawer();
+});
+
+$('drawer').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b || !currentNo) return;
+  const no = currentNo;
+  try {
+    if (b.dataset.act === 'status') {
+      await api('api/tickets/' + no, {method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({status: b.dataset.status, note: b.dataset.status === 'done' ? '维修完成' : ''})});
+    } else if (b.dataset.act === 'cat') {
+      await api('api/tickets/' + no, {method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({category: $('catSel').value})});
+    } else if (b.dataset.act === 'kcs') {
+      openKcs(no);
+      return;
+    } else if (b.dataset.act === 'save') {
+      await api('api/tickets/' + no, {method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({assignee: $('assigneeIn').value, note: $('noteIn').value})});
+    }
+    await openDetail(no);
+    await load();
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+});
+
+$('fStatus').addEventListener('change', load);
+$('fCategory').addEventListener('change', load);
+$('fPriority').addEventListener('change', load);
+$('refreshBtn').addEventListener('click', load);
+
+const _qs = new URLSearchParams(location.search);
+const presetNo = _qs.get('ticket') || _qs.get('no');
+load().then(() => { if (presetNo) openDetail(presetNo); });
+setInterval(() => { if (!currentNo) load(); }, 15000);
+
+// 桌面版心跳（浏览器访问时无副作用）
+setInterval(() => { fetch('api/ping').catch(() => {}); }, 5000);
+
+// ---------- 统一模型信息 ----------
+function showTest(msg, ok){
+  const el = $('testResult');
+  el.className = 'test-result ' + (ok === null || ok === undefined ? '' : (ok ? 'test-ok' : 'test-fail'));
+  el.textContent = msg || '';
+}
+
+async function loadUnifiedModel(){
+  $('unifiedModelInfo').textContent = '加载中…';
+  try {
+    const s = await api('api/settings');
+    const state = s.configured ? '已就绪' : '未配置 Key（规则分诊）';
+    $('unifiedModelInfo').textContent =
+      '供应商：' + (s.provider_name || '未配置') + '\n' +
+      '模型：' + (s.model_name || s.model || '未配置') +
+        (s.model && s.model_name && s.model_name !== s.model ? '（' + s.model + '）' : '') + '\n' +
+      '状态：' + state + '\n' +
+      '配置入口：工作台 → 模型设置（问答 / 报修共用）';
+  } catch (e) {
+    $('unifiedModelInfo').textContent = e.message;
+  }
+}
+
+$('settingsBtn').addEventListener('click', async () => {
+  $('settingsModal').classList.add('open');
+  showTest('', null);
+  await Promise.all([loadUnifiedModel(), loadDataInfo()]);
+});
+$('closeSettings').addEventListener('click', () => $('settingsModal').classList.remove('open'));
+$('settingsMask').addEventListener('click', () => $('settingsModal').classList.remove('open'));
+$('refreshModelBtn').addEventListener('click', () => {
+  loadUnifiedModel();
+  loadDataInfo();
+});
+
+// ---------- 数据与日志 ----------
+async function loadDataInfo(){
+  try {
+    const d = await api('api/data/info');
+    const kb = Math.max(1, Math.round(d.db_size / 1024));
+    $('dataInfo').textContent =
+      '数据库：' + d.db_path + '（' + kb + ' KB）\n' +
+      '工单 ' + d.tickets + ' 条 · 处理记录 ' + d.events + ' 条 · 累计 AI 用量 ' + (d.total_tokens || 0) + ' tokens\n' +
+      '日志：' + d.log_path + '\n' +
+      '启动备份：' + d.backup_path;
+  } catch (e) {
+    $('dataInfo').textContent = e.message;
+  }
+}
+
+$('backupBtn').addEventListener('click', () => {
+  window.location.href = 'api/data/backup';
+});
+
+$('resetDataBtn').addEventListener('click', async () => {
+  if (!confirm('将清空当前全部工单，并重建 15 条演示数据。确定继续？')) return;
+  try {
+    const r = await api('api/data/reset', {method: 'POST'});
+    await loadDataInfo();
+    await load();
+    showTest('已重置为 ' + r.inserted + ' 条演示数据', true);
+  } catch (e) { showTest(e.message, false); }
+});
+
+
+
+// ---------- 工单经验沉淀 ----------
+let kcsNo = null;
+
+function kcsMsg(text, ok){
+  const el = $('kcsMsg');
+  el.className = 'test-result ' + (ok === null || ok === undefined ? '' : (ok ? 'test-ok' : 'test-fail'));
+  el.textContent = text || '';
+}
+
+async function openKcs(no){
+  kcsNo = no;
+  $('kcsMeta').textContent = no;
+  $('kcsContent').value = '加载中…';
+  $('kcsView').style.display = 'none';
+  kcsMsg('', null);
+  $('kcsModal').classList.add('open');
+  try {
+    const d = await api('api/tickets/' + encodeURIComponent(no) + '/experience');
+    $('kcsContent').value = d.content || '';
+    $('kcsView').style.display = d.exists ? '' : 'none';
+    $('kcsView').href = '/#kb';
+  } catch (e) {
+    $('kcsContent').value = '';
+    kcsMsg(e.message, false);
+  }
+}
+function closeKcs(){ $('kcsModal').classList.remove('open'); }
+$('kcsClose').addEventListener('click', closeKcs);
+$('kcsMask').addEventListener('click', closeKcs);
+
+async function saveKcs(rebuild){
+  if (!kcsNo) return;
+  const btn = rebuild ? $('kcsSaveRebuild') : $('kcsSave');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = rebuild ? '保存并重建中…' : '保存中…';
+  kcsMsg('', null);
+  try {
+    const d = await api('api/tickets/' + encodeURIComponent(kcsNo) + '/experience', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content: $('kcsContent').value, rebuild: !!rebuild}),
+    });
+    $('kcsView').style.display = '';
+    if (d.warning) kcsMsg(d.warning, false);
+    else if (d.rebuilt) kcsMsg('已保存并重建索引（' + d.chunks + ' 块），问答/分诊现在可以检索到它。', true);
+    else kcsMsg('已保存到 ' + d.path + '；如需立即可检索，请点「保存并重建索引」。', true);
+    loadDataInfo();
+  } catch (e) {
+    kcsMsg(e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+$('kcsSave').addEventListener('click', () => saveKcs(false));
+$('kcsSaveRebuild').addEventListener('click', () => saveKcs(true));
+
+// ---------- 设备资产 ----------
+let editingAssetId = null;
+let assetCache = {};
+
+function assetMsg(text, ok){
+  const el = $('assetMsg');
+  el.className = 'test-result ' + (ok === null || ok === undefined ? '' : (ok ? 'test-ok' : 'test-fail'));
+  el.textContent = text || '';
+}
+
+function renderAssets(items){
+  assetCache = {};
+  items.forEach(a => { assetCache[a.id] = a; });
+  if (!items.length) {
+    $('assetList').innerHTML = '<div class="empty">暂无设备。先录入关键设备（AP / 交换机 / 门禁 / 投影），' +
+      '后续报修可自动关联并生成二维码。</div>';
+    return;
+  }
+  $('assetList').innerHTML = items.map(a =>
+    '<div class="trow" style="cursor:default">' +
+      '<div class="t-line1"><span class="t-no">' + esc(a.code) + '</span>' +
+        '<span class="chip">' + esc(a.category || '其他') + '</span>' +
+        '<span class="chip">' + esc(a.status || '在用') + '</span></div>' +
+      '<div class="t-desc">' + esc(a.name) + '</div>' +
+      '<div class="t-meta">' + esc(a.location || '未填位置') + ' · ' +
+        esc(a.owner || '未指定负责人') +
+        (a.warranty_until ? ' · 保修至 ' + esc(a.warranty_until) : '') + '</div>' +
+      '<div class="ops">' +
+        '<button class="ghost" data-act="open" data-id="' + a.id + '">档案</button>' +
+        '<button class="ghost" data-act="qr" data-id="' + a.id + '">二维码</button>' +
+        '<button class="ghost" data-act="edit" data-id="' + a.id + '">编辑</button>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+async function loadAssets(){
+  const q = $('assetSearch').value.trim();
+  try {
+    const d = await api('api/assets?q=' + encodeURIComponent(q));
+    renderAssets(d.assets || []);
+  } catch (e) {
+    $('assetList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+  }
+}
+
+function openAsset(a){
+  editingAssetId = a ? a.id : null;
+  $('assetModalTitle').textContent = a ? '编辑设备' : '新增设备';
+  const vals = a || {};
+  $('asCode').value = vals.code || '';
+  $('asName').value = vals.name || '';
+  $('asCategory').value = vals.category || '网络设备';
+  $('asLocation').value = vals.location || '';
+  $('asOwner').value = vals.owner || '';
+  $('asStatus').value = vals.status || '在用';
+  $('asWarranty').value = vals.warranty_until || '';
+  $('asVendor').value = vals.vendor || '';
+  $('asManual').value = vals.manual || '';
+  $('asNote').value = vals.note || '';
+  $('assetDeleteBtn').style.display = a ? '' : 'none';
+  assetMsg('', null);
+  $('assetModal').classList.add('open');
+}
+function closeAsset(){ $('assetModal').classList.remove('open'); }
+
+$('assetAddBtn').addEventListener('click', () => openAsset(null));
+$('assetClose').addEventListener('click', closeAsset);
+$('assetMask').addEventListener('click', closeAsset);
+
+
+$('assetImportBtn').addEventListener('click', () => $('assetFile').click());
+$('assetFile').addEventListener('change', async () => {
+  const file = $('assetFile').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await api('api/assets/import', {method: 'POST', body: fd});
+    await loadAssets();
+    toast('导入完成：新增 ' + r.inserted + ' · 更新 ' + r.updated +
+      (r.skipped.length ? ' · 跳过 ' + r.skipped.length : ''), 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    $('assetFile').value = '';
+  }
+});
+
+$('assetSearch').addEventListener('input', () => {
+  clearTimeout(window.__assetTimer);
+  window.__assetTimer = setTimeout(loadAssets, 200);
+});
+
+$('assetList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const a = assetCache[+btn.dataset.id];
+  if (!a) return;
+  if (btn.dataset.act === 'open') location.href = '/a/' + encodeURIComponent(a.code);
+  else if (btn.dataset.act === 'qr') window.open('api/assets/' + a.id + '/qr.png', '_blank');
+  else if (btn.dataset.act === 'edit') openAsset(a);
+});
+
+$('assetSaveBtn').addEventListener('click', async () => {
+  const payload = {
+    code: $('asCode').value.trim(),
+    name: $('asName').value.trim(),
+    category: $('asCategory').value,
+    location: $('asLocation').value.trim(),
+    owner: $('asOwner').value.trim(),
+    status: $('asStatus').value,
+    warranty_until: $('asWarranty').value.trim(),
+    vendor: $('asVendor').value.trim(),
+    manual: $('asManual').value.trim(),
+    note: $('asNote').value.trim(),
+  };
+  if (!payload.code || !payload.name) {
+    assetMsg('设备编号和名称必填', false);
+    return;
+  }
+  $('assetSaveBtn').disabled = true;
+  try {
+    await api('api/assets' + (editingAssetId ? '/' + editingAssetId : ''), {
+      method: editingAssetId ? 'PATCH' : 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    closeAsset();
+    await loadAssets();
+    toast(editingAssetId ? '设备已更新' : '设备已新增', 'ok');
+  } catch (e) {
+    assetMsg(e.message, false);
+  } finally {
+    $('assetSaveBtn').disabled = false;
+  }
+});
+
+$('assetDeleteBtn').addEventListener('click', async () => {
+  if (!editingAssetId) return;
+  if (!confirm('确定删除这台设备？已有工单不会被删除，但会失去设备关联。')) return;
+  try {
+    await api('api/assets/' + editingAssetId, {method: 'DELETE'});
+    closeAsset();
+    await loadAssets();
+    toast('设备已删除', 'ok');
+  } catch (e) { assetMsg(e.message, false); }
+});
+
+
+// ---------- 演示模式 ----------
+async function loadDemoStatus(){
+  try {
+    const s = await api('api/demo/status');
+    $('demoBanner').classList.toggle('show', !!s.active);
+    $('demoBtn').textContent = s.active ? '退出演示' : '演示模式';
+  } catch (e) {}
+}
+async function toggleDemo(){
+  try {
+    const s = await api('api/demo/status');
+    const r = await api(s.active ? 'api/demo/exit' : 'api/demo/enter', {method: 'POST'});
+    await loadDemoStatus();
+    await load();
+    await loadAssets();
+    toast(s.active ? '已退出演示模式' : '已进入演示模式（独立演示数据）', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+$('demoBtn').addEventListener('click', toggleDemo);
+$('demoExitBtn').addEventListener('click', toggleDemo);
+loadDemoStatus();
+
+loadAssets();
+if (location.hash === '#assets') {
+  setTimeout(() => {
+    const el = document.getElementById('assets');
+    if (el) el.scrollIntoView({behavior: 'smooth'});
+  }, 300);
+}
+
+// 深链接：/admin?settings=1 直接打开设置
+if (new URLSearchParams(location.search).get('settings')) {
+  $('settingsModal').classList.add('open');
+  loadUnifiedModel();
+  loadDataInfo();
+}
+</script>
+</body>
+</html>
