@@ -5,6 +5,7 @@
 数据（文档/索引/工单）放 exe 同级 data/，配置放 exe 同级 config.json。
 """
 import logging
+import encodings.idna  # PyInstaller: 提前注册 idna 编解码，避免 socket.getaddrinfo 报 unknown encoding
 import os
 import shutil
 import socket
