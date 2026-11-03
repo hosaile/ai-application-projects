@@ -13,7 +13,7 @@
 - **统一模型**：一套 `providers` 配置，问答与报修共用；当前配置只保留 `deepseek-v4.1-flash`；不填 Key 自动检索/规则模式
 - **桌面版**：[Release v2.0](https://github.com/hosaile/ai-application-projects/releases/tag/v2.0) 下载约 302MB zip → 解压 → 双击 `设备运维工作台.exe`；内置向量模型、预建索引与 9 篇知识文档
 - **测试**：主流程 **91 项** + 管理员口令 **10 项**，全部通过；自动化测试使用本地 mock 模型，真实模型连接由使用者自填 Key
-- **隐私**：包内无 `config.json`、`tickets.db`、`desktop.log`；`config.example.json` 所有 Key 为空
+- **隐私**：包内无应用级 `config.json`、`tickets.db`、`desktop.log`（模型目录内的 config.json 为模型参数文件）；`config.example.json` 所有 Key 为空
 
 > 详细说明见 [device-ops-workbench/README.md](device-ops-workbench/README.md)。
 
