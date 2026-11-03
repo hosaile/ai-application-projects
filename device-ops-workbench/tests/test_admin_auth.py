@@ -66,7 +66,9 @@ def main():
         r = requests.get(BASE + '/repair/api/data/info')
         check('未登录写接口 401', r.status_code == 401 and r.json().get('login'))
         r = requests.get(BASE + '/repair/api/assets')
-        check('设备 GET 仍可扫码访问', r.status_code == 200)
+        check('设备列表未登录 401', r.status_code == 401)
+        r = requests.get(BASE + '/a/NET-AP-001')
+        check('扫码页仍可公开访问', r.status_code == 200)
 
         s = requests.Session()
         r = s.post(BASE + '/repair/login', data={'password': 'wrong'})

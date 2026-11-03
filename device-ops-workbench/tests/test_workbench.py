@@ -294,6 +294,13 @@ def main():
         check('工单关联设备', det2.get('asset', {}).get('code') == 'NET-AP-001')
         check('设备类别修正分诊', det2['ticket']['category'] == '网络',
               det2['ticket']['category'])
+        public_asset = requests.get(BASE + '/repair/api/assets/by-code/NET-AP-001',
+                                    timeout=10).json()
+        public_text = json.dumps(public_asset, ensure_ascii=False)
+        check('扫码接口不泄露联系方式', 'contact' not in public_text
+              and 'reporter' not in public_text)
+        check('扫码接口保留工单进度', len(public_asset.get('tickets') or []) >= 1
+              and public_asset['tickets'][0].get('ticket_no'))
         check('设备历史工单可查', len(
             requests.get(BASE + '/repair/api/assets/1', timeout=10).json().get('tickets') or []) >= 1)
 

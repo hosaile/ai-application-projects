@@ -87,6 +87,10 @@ def _guard_admin():
         protected = True
     elif path.startswith('/repair/api/assets') and method != 'GET':
         protected = True
+    elif path == '/repair/api/assets' and method == 'GET':
+        protected = True
+    elif path == '/repair/api/tickets' and method == 'GET':
+        protected = True
     elif path.startswith('/repair/api/tickets/') and             (method == 'PATCH' or path.endswith('/experience')):
         protected = True
     if not protected:
@@ -683,6 +687,13 @@ def metrics():
     })
 
 
+def _public_ticket(t):
+    """扫码/公开页面只暴露工单进度，不返回报修人姓名和联系方式。"""
+    keys = ('ticket_no', 'status', 'status_label', 'category', 'priority',
+            'description', 'created_at', 'done_at')
+    return {k: t.get(k) for k in keys if k in t}
+
+
 # ---------------- 相似工单 ----------------
 def _bigrams(text):
     text = ''.join(ch for ch in (text or '').lower() if not ch.isspace())
@@ -849,7 +860,7 @@ def asset_detail(asset_id):
         conn.close()
         return jsonify({'error': '设备不存在'}), 404
     if request.method == 'GET':
-        tickets = db.asset_tickets(conn, asset_id)
+        tickets = [_public_ticket(t) for t in db.asset_tickets(conn, asset_id)]
         conn.close()
         return jsonify({'asset': asset, 'tickets': tickets})
     if request.method == 'DELETE':
@@ -885,7 +896,7 @@ def asset_by_code(code):
     if not asset:
         conn.close()
         return jsonify({'error': '设备不存在'}), 404
-    tickets = db.asset_tickets(conn, asset['id'])
+    tickets = [_public_ticket(t) for t in db.asset_tickets(conn, asset['id'])]
     conn.close()
     return jsonify({'asset': asset, 'tickets': tickets})
 

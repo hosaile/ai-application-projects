@@ -152,13 +152,13 @@ device-ops-workbench/
 ## 测试
 
 ```bash
-python tests/test_workbench.py       # 91 项：主流程
-python tests/test_admin_auth.py      # 10 项：管理员口令
+python tests/test_workbench.py       # 93 项：主流程
+python tests/test_admin_auth.py      # 11 项：管理员口令
 ```
 
-覆盖 91 项：三入口、统一配置与 Key 脱敏、RAG 问答、资产感知检索、AI 分诊 + 来源、规则兜底、工单流转、
+覆盖 93 项：三入口、统一配置与 Key 脱敏、RAG 问答、资产感知检索、AI 分诊 + 来源、规则兜底、工单流转、
 SLA 时限、工单经验沉淀与索引重建、运营指标、相似工单、资产/二维码/关联、演示模式、全局搜索、数据备份、边界与安全。
-另有 10 项管理员口令测试。
+另有 11 项管理员口令测试。
 
 测试使用本地 mock 模型（模型 ID 仍为 `deepseek-v4.1-flash`），不依赖外部网络和真实 Key。
 真实模型连通性在页面「模型设置 → 连接测试」验证。
