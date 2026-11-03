@@ -87,8 +87,8 @@ python -m venv .venv_build
 
 ## 桌面版校验信息
 
-- 压缩包：`dist/设备运维工作台-v2.0.zip`，316,335,866 字节（约 302MB）
-- SHA256：`1ac2ef1c61c1addc3c23a910f8f7ae1cfd9583c4604b73836cf05a89de5e04f0`
+- 压缩包：`dist/设备运维工作台-v2.0.zip`，316,346,119 字节（约 302MB）
+- SHA256：`1c86ed15fc72186a8c24173cadf89e617940f99f04c8ee6e2f3c8c0afcc9ea62`
 - 包内无 `config.json`、`data/tickets.db`、`desktop.log`；`config.example.json` 所有 Key 为空。
 
 ## 统一模型配置
