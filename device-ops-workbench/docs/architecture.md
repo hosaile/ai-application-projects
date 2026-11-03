@@ -52,6 +52,9 @@ tools/                build_index.py / run_eval.py
 | `/repair/login` `/repair/logout` | GET/POST | 可选管理员口令 |
 | `/repair/api/stats` | GET | 今日新增/待处理/平均时长/分类分布/已超时 |
 | `/repair/api/metrics` | GET | AI 占比/SLA 达成/重复报修/经验文档 |
+| `/repair/api/telemetry` | POST | 硬件遥测上报（令牌 + 幂等） |
+| `/repair/api/assets/<id>/telemetry` | GET | 设备遥测历史/最新值 |
+| `/repair/api/alerts` | GET/PATCH | 设备告警列表/确认 |
 | `/repair/api/similar?q=` | GET | 相似已解决工单（脱敏） |
 | `/repair/api/assets` | GET/POST | 设备台账 |
 | `/repair/api/assets/<id>` | GET/PATCH/DELETE | 设备详情/编辑/删除 |
@@ -78,6 +81,20 @@ tools/                build_index.py / run_eval.py
 
 问题里出现设备编号、名称或位置时，QA 先查 `assets` 与最近工单，生成一条 `设备档案` 资料插到检索结果最前；
 再拼普通文档检索结果。无 Key 时也会直接返回设备档案与历史工单原文。
+
+## 硬件遥测（预留已实现模拟接口）
+
+```
+ESP32/网关 → POST /repair/api/telemetry（X-Ingest-Token）
+  → device_messages 幂等
+  → device_telemetry 入库
+  → assets.last_seen/online 更新
+  → hardware.rules 阈值判断
+  → device_alerts 告警（冷却 10 分钟）
+  → 高危自动建单（不经过 LLM）
+```
+
+真实硬件尚未接入；当前用 curl/测试脚本模拟上报。
 
 ## 经验反哺（KCS）
 

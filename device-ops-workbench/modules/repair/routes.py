@@ -17,7 +17,7 @@ from flask import (Blueprint, Response, after_this_request, jsonify, redirect,
                    request, send_file, send_from_directory, session)
 
 from core import config, paths
-from modules.repair import db, triage
+from modules.repair import db, telemetry, triage
 
 bp = Blueprint('repair', __name__)
 REPAIR_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
@@ -90,6 +90,8 @@ def _guard_admin():
     elif path == '/repair/api/assets' and method == 'GET':
         protected = True
     elif path == '/repair/api/tickets' and method == 'GET':
+        protected = True
+    elif path.startswith('/repair/api/alerts'):
         protected = True
     elif path.startswith('/repair/api/tickets/') and             (method == 'PATCH' or path.endswith('/experience')):
         protected = True
@@ -694,6 +696,83 @@ def _public_ticket(t):
     return {k: t.get(k) for k in keys if k in t}
 
 
+# ---------------- 硬件遥测 ----------------
+@bp.route('/api/telemetry', methods=['POST'])
+def ingest_telemetry():
+    cfg = config.load_cfg()
+    if not telemetry.enabled(cfg):
+        return jsonify({'error': '硬件接入未启用'}), 503
+    token = telemetry.ingest_token(cfg)
+    if not token:
+        return jsonify({'error': '未配置接入令牌'}), 503
+    data = request.get_json(silent=True) or {}
+    supplied = request.headers.get('X-Ingest-Token') or str(data.get('token') or '')
+    if not supplied or not hmac.compare_digest(supplied, token):
+        return jsonify({'error': '接入令牌不正确'}), 401
+    try:
+        result = telemetry.ingest(data, cfg)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': '遥测处理失败：%s' % str(e)[:160]}), 500
+    return jsonify(result)
+
+
+def _telemetry_payload(conn, asset):
+    return jsonify({
+        'asset_code': asset['code'],
+        'online': bool(asset.get('online')),
+        'last_seen': asset.get('last_seen') or '',
+        'latest': telemetry.latest_by_metric(conn, asset['id']),
+        'history': telemetry.latest(conn, asset['id'], 100),
+    })
+
+
+@bp.route('/api/assets/<int:asset_id>/telemetry')
+def asset_telemetry(asset_id):
+    conn = db.get_db()
+    asset = db.get_asset(conn, asset_id=asset_id)
+    if not asset:
+        conn.close()
+        return jsonify({'error': '设备不存在'}), 404
+    resp = _telemetry_payload(conn, asset)
+    conn.close()
+    return resp
+
+
+@bp.route('/api/assets/by-code/<code>/telemetry')
+def asset_telemetry_by_code(code):
+    conn = db.get_db()
+    asset = db.get_asset(conn, code=code)
+    if not asset:
+        conn.close()
+        return jsonify({'error': '设备不存在'}), 404
+    resp = _telemetry_payload(conn, asset)
+    conn.close()
+    return resp
+
+
+@bp.route('/api/alerts')
+def list_alerts():
+    status = request.args.get('status') or 'open'
+    conn = db.get_db()
+    items = telemetry.alerts(conn, status)
+    conn.close()
+    return jsonify({'alerts': items})
+
+
+@bp.route('/api/alerts/<int:alert_id>', methods=['PATCH'])
+def update_alert(alert_id):
+    data = request.get_json(silent=True) or {}
+    status = data.get('status') or 'ack'
+    conn = db.get_db()
+    item = telemetry.ack_alert(conn, alert_id, status)
+    conn.close()
+    if not item:
+        return jsonify({'error': '告警不存在或状态不合法'}), 404
+    return jsonify({'ok': True, 'alert': item})
+
+
 # ---------------- 相似工单 ----------------
 def _bigrams(text):
     text = ''.join(ch for ch in (text or '').lower() if not ch.isspace())
@@ -762,6 +841,7 @@ def _asset_payload(data):
         'status': str(data.get('status') or '在用')[:20],
         'warranty_until': str(data.get('warranty_until') or '')[:20],
         'vendor': str(data.get('vendor') or '')[:60],
+        'aliases': str(data.get('aliases') or '')[:120],
         'manual': str(data.get('manual') or '')[:120],
         'note': str(data.get('note') or '')[:300],
     }
@@ -787,11 +867,11 @@ def create_asset():
         cur = conn.execute(
             '''INSERT INTO assets
                (code, name, category, location, owner, status, warranty_until, vendor,
-                manual, note, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+                manual, note, aliases, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (payload['code'], payload['name'], payload['category'], payload['location'],
              payload['owner'], payload['status'], payload['warranty_until'],
-             payload['vendor'], payload['manual'], payload['note'], ts, ts))
+             payload['vendor'], payload['manual'], payload['note'], payload['aliases'], ts, ts))
         conn.commit()
         asset = db.get_asset(conn, asset_id=cur.lastrowid)
     except sqlite3.IntegrityError:
@@ -831,20 +911,20 @@ def import_assets():
         if exists:
             conn.execute(
                 '''UPDATE assets SET name=?, category=?, location=?, owner=?, status=?,
-                   warranty_until=?, vendor=?, manual=?, note=?, updated_at=? WHERE id=?''',
+                   warranty_until=?, vendor=?, manual=?, note=?, aliases=?, updated_at=? WHERE id=?''',
                 (payload['name'], payload['category'], payload['location'], payload['owner'],
                  payload['status'], payload['warranty_until'], payload['vendor'],
-                 payload['manual'], payload['note'], ts, exists['id']))
+                 payload['manual'], payload['note'], payload['aliases'], ts, exists['id']))
             updated += 1
         else:
             conn.execute(
                 '''INSERT INTO assets
                    (code, name, category, location, owner, status, warranty_until, vendor,
-                    manual, note, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+                    manual, note, aliases, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                 (payload['code'], payload['name'], payload['category'], payload['location'],
                  payload['owner'], payload['status'], payload['warranty_until'],
-                 payload['vendor'], payload['manual'], payload['note'], ts, ts))
+                 payload['vendor'], payload['manual'], payload['note'], payload['aliases'], ts, ts))
             inserted += 1
     conn.commit()
     conn.close()
@@ -876,10 +956,11 @@ def asset_detail(asset_id):
     try:
         conn.execute(
             '''UPDATE assets SET code=?, name=?, category=?, location=?, owner=?, status=?,
-               warranty_until=?, vendor=?, manual=?, note=?, updated_at=? WHERE id=?''',
+               warranty_until=?, vendor=?, manual=?, note=?, aliases=?, updated_at=? WHERE id=?''',
             (payload['code'], payload['name'], payload['category'], payload['location'],
              payload['owner'], payload['status'], payload['warranty_until'],
-             payload['vendor'], payload['manual'], payload['note'], db.now_str(), asset_id))
+             payload['vendor'], payload['manual'], payload['note'], payload['aliases'],
+             db.now_str(), asset_id))
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()

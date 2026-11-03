@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 
 from core import paths
 
@@ -16,7 +17,8 @@ def setup(level=logging.INFO):
     fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
 
     try:
-        fh = logging.FileHandler(paths.log_path(), encoding='utf-8')
+        fh = RotatingFileHandler(paths.log_path(), maxBytes=5 * 1024 * 1024,
+                                 backupCount=3, encoding='utf-8')
         fh.setFormatter(fmt)
         logger.addHandler(fh)
     except Exception:

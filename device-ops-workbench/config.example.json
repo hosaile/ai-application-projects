@@ -89,5 +89,47 @@
   },
   "field": {
     "assistant": "网络排障助手.html"
+  },
+  "hardware": {
+    "enabled": false,
+    "ingest_token": "",
+    "ingest_token_env": "WORKBENCH_INGEST_TOKEN",
+    "auto_ticket": true,
+    "alert_cooldown_minutes": 10,
+    "offline_minutes": 5,
+    "rules": [
+      {
+        "key": "temp_high",
+        "metric": "temperature",
+        "op": ">",
+        "value": 40,
+        "level": "高",
+        "message": "设备温度过高"
+      },
+      {
+        "key": "current_zero",
+        "metric": "current",
+        "op": "<=",
+        "value": 0.05,
+        "level": "中",
+        "message": "设备电流为 0，可能断电"
+      },
+      {
+        "key": "door_open",
+        "metric": "door",
+        "op": ">=",
+        "value": 1,
+        "level": "中",
+        "message": "机柜门被打开"
+      },
+      {
+        "key": "water_leak",
+        "metric": "water",
+        "op": ">=",
+        "value": 1,
+        "level": "高",
+        "message": "检测到漏水"
+      }
+    ]
   }
 }

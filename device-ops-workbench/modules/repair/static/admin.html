@@ -210,6 +210,11 @@ button.danger:hover{background:#fbeeec}
     </div>
   </section>
 
+  <section class="card" id="alertsCard">
+    <h2>设备告警</h2>
+    <div id="alerts"><div class="empty">暂无未处理告警</div></div>
+  </section>
+
   <section class="card">
     <h2>工单列表</h2>
     <div class="filters" style="margin-bottom:14px">
@@ -290,6 +295,7 @@ button.danger:hover{background:#fbeeec}
       </div>
       <div class="field"><label>设备编号</label><input id="asCode" maxlength="40" placeholder="如 NET-AP-001"></div>
       <div class="field"><label>设备名称</label><input id="asName" maxlength="80" placeholder="如 3号楼502 无线AP"></div>
+      <div class="field"><label>别名 / 常见叫法</label><input id="asAliases" maxlength="120" placeholder="如 502的AP、三楼无线、NET-AP-001"></div>
       <div class="field"><label>类别</label>
         <select id="asCategory">
           <option>网络设备</option><option>门禁设备</option><option>水电设备</option>
@@ -417,14 +423,16 @@ async function load(){
     firstLoad = false;
   }
   try {
-    const [list, stats, metrics] = await Promise.all([
+    const [list, stats, metrics, alerts] = await Promise.all([
       api('api/tickets?' + params.toString()),
       api('api/stats'),
-      api('api/metrics')
+      api('api/metrics'),
+      api('api/alerts?status=open')
     ]);
     renderList(list.tickets || []);
     renderStats(stats);
     renderMetrics(metrics);
+    renderAlerts(alerts.alerts || []);
   } catch (err) {
     $('list').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
   }
@@ -445,6 +453,24 @@ function renderStats(s){
   $('sOverdue').textContent = s.overdue != null ? s.overdue : '–';
 }
 
+
+
+function renderAlerts(items){
+  if (!items.length) {
+    $('alerts').innerHTML = '<div class="empty">暂无未处理告警</div>';
+    return;
+  }
+  $('alerts').innerHTML = items.map(a =>
+    '<div class="trow" style="cursor:default">' +
+      '<div class="t-line1"><span class="chip ' + (a.level === '高' ? 'pri-high' : '') + '">' +
+        esc(a.level) + '</span><span class="t-no">' + esc(a.asset_name || a.asset_id) + '</span>' +
+        (a.ticket_no ? '<span class="chip">已建单 ' + esc(a.ticket_no) + '</span>' : '') +
+      '</div>' +
+      '<div class="t-desc">' + esc(a.message) + '（' + esc(a.metric) + '=' + esc(a.value) + '）</div>' +
+      '<div class="t-meta">' + esc(a.created_at) + '</div>' +
+      '<div class="ops"><button class="ghost" data-alert="' + a.id + '">确认</button></div>' +
+    '</div>').join('');
+}
 
 function renderMetrics(m){
   const pct = v => v == null ? '–' : Math.round(v * 100) + '%';
@@ -733,6 +759,16 @@ async function saveKcs(rebuild){
 $('kcsSave').addEventListener('click', () => saveKcs(false));
 $('kcsSaveRebuild').addEventListener('click', () => saveKcs(true));
 
+$('alerts').addEventListener('click', async e => {
+  const btn = e.target.closest('button[data-alert]');
+  if (!btn) return;
+  try {
+    await api('api/alerts/' + btn.dataset.alert, {method: 'PATCH',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'ack'})});
+    await load();
+  } catch (err) { toast(err.message, 'err'); }
+});
+
 // ---------- 设备资产 ----------
 let editingAssetId = null;
 let assetCache = {};
@@ -784,6 +820,7 @@ function openAsset(a){
   const vals = a || {};
   $('asCode').value = vals.code || '';
   $('asName').value = vals.name || '';
+  $('asAliases').value = vals.aliases || '';
   $('asCategory').value = vals.category || '网络设备';
   $('asLocation').value = vals.location || '';
   $('asOwner').value = vals.owner || '';
@@ -840,6 +877,7 @@ $('assetSaveBtn').addEventListener('click', async () => {
   const payload = {
     code: $('asCode').value.trim(),
     name: $('asName').value.trim(),
+    aliases: $('asAliases').value.trim(),
     category: $('asCategory').value,
     location: $('asLocation').value.trim(),
     owner: $('asOwner').value.trim(),

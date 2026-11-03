@@ -84,6 +84,43 @@ def init_db():
       vendor TEXT DEFAULT '',
       manual TEXT DEFAULT '',
       note TEXT DEFAULT '',
+      aliases TEXT DEFAULT '',
+      hardware_type TEXT DEFAULT '',
+      protocol TEXT DEFAULT '',
+      endpoint TEXT DEFAULT '',
+      firmware TEXT DEFAULT '',
+      last_seen TEXT DEFAULT '',
+      online INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS device_messages (
+      msg_id TEXT PRIMARY KEY,
+      asset_id INTEGER NOT NULL,
+      ts TEXT DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS device_telemetry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      asset_id INTEGER NOT NULL,
+      metric TEXT NOT NULL,
+      value REAL,
+      unit TEXT DEFAULT '',
+      ts TEXT NOT NULL,
+      source TEXT DEFAULT '',
+      msg_id TEXT DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS device_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      asset_id INTEGER NOT NULL,
+      rule_key TEXT DEFAULT '',
+      level TEXT DEFAULT '中',
+      message TEXT DEFAULT '',
+      metric TEXT DEFAULT '',
+      value REAL,
+      status TEXT DEFAULT 'open',
+      ticket_no TEXT DEFAULT '',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -91,6 +128,9 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_tickets_no ON tickets(ticket_no);
     CREATE INDEX IF NOT EXISTS idx_events_ticket ON events(ticket_id);
     CREATE INDEX IF NOT EXISTS idx_assets_code ON assets(code);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_asset_ts ON device_telemetry(asset_id, ts);
+    CREATE INDEX IF NOT EXISTS idx_alerts_asset_time ON device_alerts(asset_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_alerts_status ON device_alerts(status);
     ''')
     migrate_db(conn)
     conn.commit()
@@ -111,6 +151,17 @@ def migrate_db(conn):
             ('first_response_at', "TEXT DEFAULT ''")):
         if col not in cols:
             conn.execute('ALTER TABLE tickets ADD COLUMN %s %s' % (col, ddl))
+    asset_cols = {r[1] for r in conn.execute('PRAGMA table_info(assets)').fetchall()}
+    for col, ddl in (
+            ('aliases', "TEXT DEFAULT ''"),
+            ('hardware_type', "TEXT DEFAULT ''"),
+            ('protocol', "TEXT DEFAULT ''"),
+            ('endpoint', "TEXT DEFAULT ''"),
+            ('firmware', "TEXT DEFAULT ''"),
+            ('last_seen', "TEXT DEFAULT ''"),
+            ('online', 'INTEGER DEFAULT 0')):
+        if col not in asset_cols:
+            conn.execute('ALTER TABLE assets ADD COLUMN %s %s' % (col, ddl))
 
 
 def gen_ticket_no(conn):

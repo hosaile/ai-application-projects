@@ -132,6 +132,36 @@ python app.py
 设置后：`/repair/admin` 跳转登录页；工单写操作、设备写操作、数据管理、经验沉淀需要登录；
 学生报修、工单查询、扫码档案仍可直接访问。口令只从环境变量读取，不写入 `config.json`。
 
+## 硬件接入（可选，默认关闭）
+
+当前版本已实现遥测上报接口（模拟数据验证），真实硬件尚未接入。
+
+```bash
+# Windows PowerShell
+$env:WORKBENCH_INGEST_TOKEN="your-ingest-token"
+# config.json 里设置 "hardware": {"enabled": true, ...}
+python app.py
+```
+
+```http
+POST /repair/api/telemetry
+X-Ingest-Token: your-ingest-token
+Content-Type: application/json
+
+{
+  "asset_code": "NET-AP-001",
+  "ts": "2027-03-01T10:00:00+08:00",
+  "msg_id": "esp32-001-000123",
+  "metrics": {"temperature": 42.5, "current": 1.2, "door": 0},
+  "units": {"temperature": "C", "current": "A"}
+}
+```
+
+- 资产页显示最新遥测/在线状态；管理端显示设备告警。
+- 高温/漏水等高危告警自动建单；中危告警只记录，需人工确认。
+- 同一设备同一规则 10 分钟内不重复告警，消息按 `msg_id` 幂等。
+- 硬件采购与接线见 `docs/hardware.md`（如有）。
+
 ## 数据目录
 
 ```
@@ -152,11 +182,11 @@ device-ops-workbench/
 ## 测试
 
 ```bash
-python tests/test_workbench.py       # 93 项：主流程
+python tests/test_workbench.py       # 103 项：主流程
 python tests/test_admin_auth.py      # 11 项：管理员口令
 ```
 
-覆盖 93 项：三入口、统一配置与 Key 脱敏、RAG 问答、资产感知检索、AI 分诊 + 来源、规则兜底、工单流转、
+覆盖 103 项：三入口、统一配置与 Key 脱敏、RAG 问答、资产感知检索、AI 分诊 + 来源、规则兜底、工单流转、
 SLA 时限、工单经验沉淀与索引重建、运营指标、相似工单、资产/二维码/关联、演示模式、全局搜索、数据备份、边界与安全。
 另有 11 项管理员口令测试。
 

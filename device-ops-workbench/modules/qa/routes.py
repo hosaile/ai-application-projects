@@ -2,6 +2,7 @@
 """QA 模块：RAG 问答工作台（对话 / 知识库 / 检索评估 / 模型设置）。"""
 import json
 import os
+import re
 import threading
 
 from flask import Blueprint, jsonify, request, send_from_directory
@@ -34,24 +35,36 @@ def index():
     return send_from_directory(QA_STATIC, 'index.html')
 
 
+def _norm_asset_text(value):
+    text = str(value or '').lower()
+    text = re.sub(r'\s+', '', text)
+    text = text.translate(str.maketrans('一二三四五六七八九', '123456789'))
+    text = text.replace('十', '10')
+    return text.replace('号楼', '楼').replace('栋', '楼')
+
+
 def _asset_hits(question):
     """问题里提到设备编号/名称/位置时，把设备档案与历史工单作为高优先资料。"""
     try:
         from modules.repair import db as repair_db
         conn = repair_db.get_db()
         assets = repair_db.list_assets(conn)
-        q = (question or '').lower()
+        q = _norm_asset_text(question)
         matched = []
         for a in assets:
             score = 0
-            code = (a.get('code') or '').lower()
-            name = a.get('name') or ''
-            location = a.get('location') or ''
+            code = _norm_asset_text(a.get('code'))
+            name = _norm_asset_text(a.get('name'))
+            location = _norm_asset_text(a.get('location'))
+            alias_parts = [_norm_asset_text(x) for x in
+                           re.split(r'[,，、;；\s]+', a.get('aliases') or '')]
             if code and code in q:
                 score = 3
-            elif name and name in question:
+            elif name and len(name) >= 2 and name in q:
                 score = 2
-            elif len(location) >= 2 and location in question:
+            elif any(len(x) >= 2 and x in q for x in alias_parts):
+                score = 2
+            elif len(location) >= 2 and location in q:
                 score = 1
             if score:
                 matched.append((score, a))
@@ -67,6 +80,8 @@ def _asset_hits(question):
                                       a.get('owner') or '未填'),
                 '保修至：%s' % (a.get('warranty_until') or '未填'),
             ]
+            if a.get('aliases'):
+                lines.append('别名：%s' % a['aliases'])
             if tickets:
                 lines.append('最近工单：')
                 for t in tickets:

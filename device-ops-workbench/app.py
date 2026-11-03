@@ -14,12 +14,13 @@ import os
 import secrets
 import sys
 import threading
+import time
 from urllib.parse import quote
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-from core import config, logging as wlog, paths  # noqa: E402
+from core import backup, config, logging as wlog, paths  # noqa: E402
 from flask import Flask, jsonify, request, send_from_directory  # noqa: E402
 
 from modules.field.routes import bp as field_bp  # noqa: E402
@@ -42,6 +43,18 @@ def _prewarm_embedding():
 
 
 threading.Thread(target=_prewarm_embedding, daemon=True, name='rag-prewarm').start()
+
+
+def _backup_loop():
+    while True:
+        try:
+            backup.backup_db()
+        except Exception:
+            pass
+        time.sleep(6 * 3600)
+
+
+threading.Thread(target=_backup_loop, daemon=True, name='db-backup').start()
 
 app = Flask(__name__, static_folder=None)
 app.json.ensure_ascii = False

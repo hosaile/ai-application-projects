@@ -23,6 +23,12 @@ h1{font-size:22px;margin:0 0 4px}
 .chip{font-size:12px;padding:3px 10px;border-radius:4px;background:#f2f1ec;border:1px solid var(--line)}
 .grid{display:grid;grid-template-columns:88px 1fr;gap:8px 12px;font-size:14px;margin-top:8px}
 .grid .k{color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.metric{background:#f7f5ef;border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+.metric .k{font-size:12px;color:var(--muted)}
+.metric .v{font-size:20px;font-weight:700;margin-top:2px}
+.metric .m{font-size:11px;color:var(--muted);margin-top:2px}
+@media (max-width:560px){.metrics{grid-template-columns:1fr 1fr}}
 h2{font-size:15px;margin:0 0 10px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
 .item{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
 .item:last-child{border-bottom:none}
@@ -56,6 +62,10 @@ h2{font-size:15px;margin:0 0 10px;padding-bottom:8px;border-bottom:2px solid var
         <a class="btn ghost" href="/repair/">报修入口</a>
       </div>
     </div>
+  </section>
+  <section class="card">
+    <h2>最近遥测</h2>
+    <div id="telemetry"><div class="empty">未接入硬件</div></div>
   </section>
   <section class="card">
     <h2>历史工单</h2>
@@ -113,6 +123,24 @@ function render(data){
 api('/repair/api/assets/by-code/' + encodeURIComponent(code)).then(render).catch(e => {
   $('loading').textContent = e.message;
 });
+
+function renderTelemetry(d){
+  const latest = d.latest || [];
+  const box = $('telemetry');
+  if (!latest.length) {
+    box.innerHTML = '<div class="empty">未接入硬件；接入 ESP32/网关后这里显示温度、电流、门磁等最新值</div>';
+    return;
+  }
+  const state = d.online ? '在线' : '离线';
+  box.innerHTML = '<div class="badges"><span class="chip">' + state + '</span>' +
+    (d.last_seen ? '<span class="chip">最近上报 ' + esc(d.last_seen) + '</span>' : '') +
+    '</div><div class="metrics">' + latest.map(m =>
+      '<div class="metric"><div class="k">' + esc(m.metric) + '</div>' +
+      '<div class="v">' + esc(m.value) + (m.unit ? ' ' + esc(m.unit) : '') + '</div>' +
+      '<div class="m">' + esc(m.ts) + '</div></div>').join('') + '</div>';
+}
+api('/repair/api/assets/by-code/' + encodeURIComponent(code) + '/telemetry')
+  .then(renderTelemetry).catch(() => {});
 </script>
 </body>
 </html>

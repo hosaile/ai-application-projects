@@ -20,6 +20,7 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FAKE_KEY = 'fake-' + os.urandom(8).hex()
+INGEST_TOKEN = 'ingest-' + os.urandom(6).hex()
 BASE = 'http://127.0.0.1:8102'
 MOCK = 'http://127.0.0.1:8799'
 passed = 0
@@ -67,6 +68,22 @@ def build_config(tmp):
     cfg['providers'][0]['base_url'] = MOCK + '/v1'
     cfg['providers'][0]['api_key'] = FAKE_KEY
     cfg['providers'][0]['timeout'] = 30
+    cfg['hardware'] = {
+        'enabled': True,
+        'ingest_token': '',
+        'ingest_token_env': 'WORKBENCH_INGEST_TOKEN',
+        'auto_ticket': True,
+        'alert_cooldown_minutes': 10,
+        'offline_minutes': 5,
+        'rules': [
+            {'key': 'temp_high', 'metric': 'temperature', 'op': '>', 'value': 40,
+             'level': '高', 'message': '设备温度过高'},
+            {'key': 'current_zero', 'metric': 'current', 'op': '<=', 'value': 0.05,
+             'level': '中', 'message': '设备电流为 0，可能断电'},
+            {'key': 'door_open', 'metric': 'door', 'op': '>=', 'value': 1,
+             'level': '中', 'message': '机柜门被打开'},
+        ],
+    }
     path = os.path.join(tmp, 'config.json')
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
@@ -97,7 +114,8 @@ def main():
                              '8799'], cwd=ROOT,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     env = dict(os.environ, WORKBENCH_DATA_DIR=data, WORKBENCH_CONFIG=config_path,
-               PORT='8102', PYTHONIOENCODING='utf-8', USE_TF='0')
+               PORT='8102', PYTHONIOENCODING='utf-8', USE_TF='0',
+               WORKBENCH_INGEST_TOKEN=INGEST_TOKEN)
     proc = subprocess.Popen([sys.executable, 'app.py'], cwd=ROOT, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -259,7 +277,7 @@ def main():
                           json={'code': 'NET-AP-001', 'name': '3号楼502 无线AP',
                                 'category': '网络设备', 'location': '3号楼502',
                                 'owner': '王师傅', 'warranty_until': '2027-06-30',
-                                'vendor': 'TP-Link'}, timeout=10)
+                                'vendor': 'TP-Link', 'aliases': '三楼无线,502AP'}, timeout=10)
         check('新增设备成功', a.status_code == 200 and a.json()['asset']['code'] == 'NET-AP-001')
         check('设备编号唯一', requests.post(
             BASE + '/repair/api/assets',
@@ -305,6 +323,38 @@ def main():
             requests.get(BASE + '/repair/api/assets/1', timeout=10).json().get('tickets') or []) >= 1)
 
         print()
+        print('-- 硬件遥测 / 告警 --')
+        headers = {'X-Ingest-Token': INGEST_TOKEN}
+        payload = {'asset_code': 'NET-AP-001', 'msg_id': 'test-msg-001',
+                   'ts': '2027-03-01T10:00:00+08:00',
+                   'metrics': {'temperature': 45.2, 'current': 0.0, 'door': 1},
+                   'units': {'temperature': 'C', 'current': 'A'}}
+        tel = requests.post(BASE + '/repair/api/telemetry', json=payload,
+                            headers=headers, timeout=10)
+        td = tel.json()
+        check('遥测上报成功', tel.status_code == 200 and td.get('accepted') == 3, td)
+        check('温度规则触发', any(a.get('rule') == 'temp_high' for a in td.get('alerts', [])))
+        check('高危告警自动建单', any(a.get('ticket_no') for a in td.get('alerts', [])))
+        latest = requests.get(BASE + '/repair/api/assets/by-code/NET-AP-001/telemetry',
+                              timeout=10).json()
+        check('资产页可读最新遥测', len(latest.get('latest') or []) == 3
+              and latest.get('online') is True)
+        check('遥测接口不含联系方式',
+              'contact' not in json.dumps(latest, ensure_ascii=False))
+        dup = requests.post(BASE + '/repair/api/telemetry', json=payload,
+                            headers=headers, timeout=10).json()
+        check('msg_id 幂等', dup.get('duplicate') is True and dup.get('accepted') == 0)
+        bad = requests.post(BASE + '/repair/api/telemetry', json=payload, timeout=10)
+        check('无令牌拒绝', bad.status_code == 401)
+        alerts = requests.get(BASE + '/repair/api/alerts?status=open', timeout=10).json()
+        check('告警列表可查', len(alerts.get('alerts') or []) >= 3)
+        ack = requests.patch(BASE + '/repair/api/alerts/%s'
+                             % alerts['alerts'][0]['id'],
+                             json={'status': 'ack'}, timeout=10)
+        check('告警可确认', ack.status_code == 200
+              and ack.json().get('alert', {}).get('status') == 'ack')
+
+        print()
         print('-- 资产感知问答 / 运营指标 --')
         qa_asset = requests.post(BASE + '/api/ask',
                                  json={'question': 'NET-AP-001 这台设备最近出过什么问题',
@@ -315,6 +365,11 @@ def main():
         check('设备档案含历史工单', 'NET-AP-001' in (qa_asset['hits'][0].get('text') or '')
               and 'BX' in (qa_asset['hits'][0].get('text') or ''))
         check('返回匹配设备列表', bool(qa_asset.get('assets')))
+        alias_ask = requests.post(BASE + '/api/ask',
+                                  json={'question': '三楼无线 这台设备最近出过什么问题',
+                                        'top_k': 5}, timeout=120).json()
+        check('设备别名可命中', alias_ask.get('hits') and
+              alias_ask['hits'][0].get('source') == '设备档案')
         met = requests.get(BASE + '/repair/api/metrics', timeout=10).json()
         check('运营指标字段完整', all(k in met for k in
               ('ai_rate', 'sla_rate', 'repeat_rate', 'experience_docs', 'avg_hours')))
