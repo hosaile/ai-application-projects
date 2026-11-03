@@ -57,6 +57,7 @@ python app.py                 # http://127.0.0.1:8100/
 ## 桌面版（已打包验证）
 
 打包产物：`dist/设备运维工作台/设备运维工作台.exe`（804MB），压缩包 `dist/设备运维工作台-v2.0.zip`（302MB）。
+GitHub Release v2.0 资产：`DeviceOpsWorkbench-v2.0.zip`（与本地 zip 同一 SHA256）。
 已在干净目录实测：首次启动自动生成 `data/` 与 `config.json`，问答、报修、现场排障、二维码、经验沉淀均可用。
 
 - 双击 `设备运维工作台.exe`：启动本地服务并打开应用窗口，目标电脑无需安装 Python。
